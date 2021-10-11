@@ -1,0 +1,28 @@
+version: "3"
+
+services:
+  app:
+    build:
+      context: .
+    user: root
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+    command: >
+      sh -c "python3 manage.py runserver 0.0.0.0:3000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=app
+      - DB_USER=postgres
+      - DB_PASS=supersecretpassword
+    depends_on: 
+      - db
+
+  db:
+    image: postgres:11-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=supersecretpassword
