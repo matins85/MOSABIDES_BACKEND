@@ -1,28 +1,94 @@
-version: "3"
+# version: '3'
+
+# services:
+#   app:
+#     build:
+#       context: .
+#     command: >
+#       sh -c "python3 manage.py wait_for_db &&
+#              python3 manage.py migrate &&
+#              python3 manage.py runserver 0.0.0.0:8000"
+#     ports:
+#       - 8000:8000
+#     volumes:
+#       - ./app:/app
+#       - ./data/web:/vol/web
+#     environment:
+#       - SECRET_KEY=devsecretkey
+#       - DEBUG=1
+#       - DB_HOST=db
+#       - DB_NAME=mosab
+#       - DB_USER=mosabides
+#       - DB_PASS=supersecretpassword
+#     depends_on:
+#       - db
+
+#   db:
+#     image: postgres:13-alpine
+#     environment:
+#       - POSTGRES_DB=mosab
+#       - POSTGRES_USER=mosabides
+#       - POSTGRES_PASSWORD=supersecretpassword
+
+version: '3.9'
 
 services:
   app:
     build:
       context: .
-    user: root
     ports:
       - "3000:3000"
     volumes:
       - ./app:/app
+      - ./data/web:/vol/web
     command: >
-      sh -c "python3 manage.py runserver 0.0.0.0:3000"
+      sh -c "python3 manage.py migrate &&
+             python3 manage.py wait_for_db &&
+             python3 manage.py runserver 0.0.0.0:3000"
     environment:
-      - DB_HOST=db
-      - DB_NAME=app
-      - DB_USER=postgres
-      - DB_PASS=supersecretpassword
-    depends_on: 
+            - SECRET_KEY=RO6dzcIdOALyvuAT7PEjQQoGeu0
+            - DEBUG=1
+            - DB_HOST=db
+            - DB_NAME=app
+            - DB_USER=postgres
+            - DB_PASS=supersecretpassword
+            - DJANGO_ALLOWED_HOSTS=127.0.0.1
+            - CELERY_BROKER=redis://redis:6379
+            - CELERY_BACKEND=redis://redis:6379
+    env_file:
+      - ./.env
+    depends_on:
       - db
 
   db:
-    image: postgres:11-alpine
-    restart: always
+    image: postgres:13-alpine
+    env_file:
+      - ./.env
     environment:
       - POSTGRES_DB=app
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=supersecretpassword
+    # volumes: 
+    #   - pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:alpine
+  celery:
+    restart: always
+    build:
+      context: .
+    command: celery -A app worker -l info
+    volumes:
+      - ./app:/app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=127.0.0.1
+      - CELERY_BROKER=redis://redis:6379
+      - CELERY_BACKEND=redis://redis:6379
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+      - redis
+      - app
+volumes:
+  pgdata:

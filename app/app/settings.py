@@ -19,16 +19,24 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = str(os.getenv('SECRET_KEY'))
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool(int(os.getenv('DEBUG', 0)))
 
 ALLOWED_HOSTS = []
+ALLOWED_HOSTS.extend(
+    filter(
+        None,
+        os.getenv('ALLOWED_HOSTS', '').split(','),
+    )
+)
 
 
 # Application definition
@@ -46,6 +54,7 @@ INSTALLED_APPS = [
     'user',
     'adminUser',
     'corsheaders',
+    'demo',
 ]
 
 REST_FRAMEWORK = {
@@ -92,10 +101,10 @@ WSGI_APPLICATION = 'app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.environ.get('DB_HOST'),
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASS'),
+        'HOST': os.getenv('DB_HOST'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASS'),
     }
 }
 
@@ -136,8 +145,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
-STATIC_URL = '/static/'
-MEDIA_URL = '/media/'
+STATIC_URL = '/static/static/'
+MEDIA_URL = '/static/media/'
 
 MEDIA_ROOT = '/vol/web/media'
 
@@ -148,5 +157,18 @@ STATIC_ROOT = 'vol/web/static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 AUTH_USER_MODEL = 'core.User'
+
+EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
+
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = os.getenv('EMAIL_PORT')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')
+# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Redis and Celery Conf
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_BROKER")

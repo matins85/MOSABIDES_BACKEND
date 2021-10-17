@@ -1,1 +1,2 @@
-# DjangoRest1
+# MOSABIDES_BACKEND
+# run: docker-compose up

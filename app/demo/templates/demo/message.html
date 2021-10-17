@@ -1,0 +1,238 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+        <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <link href="https://fonts.googleapis.com/css?family=Ruda:300,400,500,600,700,800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="{% static 'style.css' %}" />
+        <style type="text/css">
+
+            body{
+                background: #E5E5E5;
+                color: #222831;
+                padding: 15px;
+                font-family: Ruda;
+                font-style: normal;
+            }
+
+            section {
+                margin-left: auto;
+                margin-right: auto;
+                width: 45em;
+            }
+
+            .nav {
+                width: 100%;
+                background: white;
+            }
+
+            .logo__p {
+                text-align: center;
+            }
+
+            .logo {
+                width: 9em;
+                height: 7em;
+            }
+
+
+            .order__main {
+                background: white;
+                color: #222831;
+                padding: 1em;
+            }
+
+
+            .verification {
+                text-align: center;
+                font-size: 18px;
+                font-weight: 500;
+                margin-top: 1em;
+                margin-bottom: 1em;
+            }
+
+            .code {
+                text-align: center;
+                font-size: large;
+                font-weight: 500;
+            }
+
+            .expire {
+                margin-top: 1em;
+            }
+
+
+
+            footer {
+            background: #242424;
+            font-size: 14px;
+            }
+
+
+            .footer {
+            margin-top: 1em;
+            padding: 1em;
+            }
+
+
+            .footer__about table  {
+            margin: auto;
+            }
+
+            .footer__about a{
+            margin: 5px;
+            color: #aaaaaa;
+            text-decoration-line: none;
+            }
+
+            .footer__icons table {
+            margin: auto;
+            }
+
+            .footer__icons table tr td a{
+            margin-top: 1em;
+            margin-bottom: 1em;
+            color: #aaaaaa;
+            }
+
+            .footer__icons div{
+            margin: 10px;
+            }
+
+            .whatsapp::after, .whatsapp::before {
+            content: "\f232";
+            } 
+
+            .telegram::after, .telegram::before {
+            content: '\f2c6';
+            } 
+
+            .facebook::after, .facebook::before {
+            content: '\f39e';
+            } 
+
+            .instagram::after, .instagram::before {
+            content: '\f16d';
+            } 
+
+
+
+            .footer__address,.footer__phone, .footer__email {
+            text-align: center;
+            color: #888888;
+            
+            }
+
+
+            .footer__phone a, .footer__email a {
+            text-decoration-line: none;
+            color: #888888;
+            }
+
+            .footer__info {
+            margin-top: 1em;
+            color: #888888;
+            text-align: center;
+            }
+
+
+            @media (max-width: 996px) {
+            section {
+                width: 100%;
+            }
+            }
+
+
+    </style>
+
+        </head>
+        <body>
+
+            <section>
+
+
+                <div class="nav">
+                  <div class="logo__p">
+                    <img class="logo" src="/safari-pinned-tab.svg" alt="">
+                  </div>
+                </div>
+    
+    
+
+                <div class="order__main__p">
+    
+                  <div class="order__main">
+    
+                    <div>Hi {{ name }}</div>
+    
+                    <div class="verification">Your Verification code is</div>
+    
+                    <div class="code">{{ msg }}</div>
+    
+                    <div class="expire">Code Expires in 15 Minutes. Please if you did not
+                        Trigger this Action or did Not Try to Sign up to Mosabides Recently, Please Kindly
+                        Ignore This Email.
+                      </div>
+    
+                      
+                  </div>
+    
+                </div>
+    
+                    
+                <footer>
+    
+                  <div class="footer">
+    
+                    <div class="footer__about">
+                      <table>
+                        <tr>
+                          <td><a href="https://mosabides.vercel.app/about">About us</a></td>
+                          <td><a href="hhttps://mosabides.vercel.app/about">Contact us</a></td>
+                          <td><a href="https://mosabides.vercel.app/store/all">Mosabides Store</a></td>
+                        </tr>
+                      </table>
+                    </div>
+    
+                    <div class="footer__icons">
+                      <table>
+                        <tr>
+                          <td><a class="facebook"></a></td>
+                          <td><a class="whatsapp"></a></td>
+                          <td><a class="telegram"></a></td>
+                          <td><a class="instagram"></a></td>
+                        </tr>
+                      </table>
+                    </div>
+    
+    
+                    <div class="footer__address">
+                      No 35 Ademola Adetokunbo Wuse 2, same plaza as Moscow underground 
+                      close to studio 24 Wuse 2 , Amingo road, Abuja Nigeria
+                    </div>
+    
+                    <div class="footer__phone">
+                        <a href="">+2348020334477</a>
+                    </div>
+    
+                    <div class="footer__email">
+                      <a href="">info@mosabides.com</a>
+                    </div>
+    
+                    <div class="footer__info">
+                        Copyright &#169; 2020 mosabides.com. All rights reserved
+                      </div>
+    
+    
+                  </div>
+      
+                </footer>
+    
+              </section>
+    
+
+      </body>
+
+    </html>
