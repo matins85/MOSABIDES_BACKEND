@@ -37,7 +37,7 @@ delivery_type = (
 )
 
 UserRole = (('user', 'user'),
-           ('superUser', 'superUser'),
+           ('superAdmin', 'superAdmin'),
            ('admin', 'admin'),
            ('rider', 'rider'),
 )
