@@ -8,11 +8,11 @@ services:
     volumes:
       - static-data:/vol/web
     environment:
-      - DB_HOST=db
+      - DB_HOST=${DB_HOST}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${DBSECRET}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:
       - db
@@ -36,7 +36,25 @@ services:
       - 30:3000
     volumes:
       - static-data:/vol/static
-
+  redis:
+    image: redis:alpine
+  celery:
+    restart: always
+    build:
+      context: .
+    command: celery -A app worker -l info
+    volumes:
+      - ./app:/app
+    environment:
+      - DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CELERY_BROKER=${CELERY_BROKER}
+      - CELERY_BACKEND=${CELERY_BACKEND}
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+      - redis
+      - app
 volumes:
   postgres-data:
   static-data:

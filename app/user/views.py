@@ -34,7 +34,8 @@ import phonenumbers
 # from passlib.hash import pbkdf2_sha256
 import random
 from django.db.models import Q
-from core.models import Product, ContactUs, EmailOtp, Notification, Test
+from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, \
+    Wishlist, BillingDetails, Orders
 
 
 now = datetime.now()
@@ -46,6 +47,11 @@ auth_user = get_user_model()
 EMAIL_SENDER = os.getenv('EMAIL_HOST_USER')
 # salt for password hashing
 salt = bytes(os.getenv('SALT'), 'utf-8')
+# refresh token exp time
+refresh_exp = 60*24
+# acces token expire time
+access_exp = 60
+
 
 # generate random characters
 def secure_rand(len=10):
@@ -148,7 +154,7 @@ def ResizeImage(img, size):
     if file_ext[1] not in ext:
         return dict(error="invalid image extension")
     picture_fn = file_ext[0] + file_ext[1]
-    picture_path = os.path.join(settings.STATIC_URL, im)
+    picture_path = os.path.join(settings.STATIC_ROOT, im)
     op = Image.open(picture_path)
     width, height = op.size
     if width < size or height < size:
@@ -167,7 +173,7 @@ def ResizeImage(img, size):
 
 # delete expired email otp and used ones
 def check_email_otp():
-    rows = EmailOtp.objects.filter(Q(expd=True) | Q(used=True) ) 
+    rows = EmailOtp.objects.filter(Q(expd=True) | Q(used=True)) 
     for row in rows:
         row.delete()
 
@@ -182,7 +188,6 @@ def check_email_otp2(email):
 class Register(APIView):
     renderer_classes = [JSONRenderer]
 
-    # TODO add password correctly and validate phone
     # send email otp for email verification
     @staticmethod
     def get(request):
@@ -224,8 +229,6 @@ class Register(APIView):
                 return Response(msg)
         
 
-
-    # TODO add password correctly and validate phone
     # register user class
     @staticmethod
     def post(request):
@@ -285,8 +288,35 @@ class Register(APIView):
 
 
 
+def delete_auth_token(id):
+    logs = AuthToken.objects.filter(created_by=id)
+    if logs.exists():
+        for log in logs:
+            log.delete()
+            return dict(msg='success')
+    else:
+        return dict(msg='success')
 
-# TODO install module passlib,
+
+
+# generate refresh token
+def generateAccess(id):
+    log = auth_user.objects.get(pk=id)
+    if log.disabled == True:
+        msg = dict(error='Account disabled')
+        return Response(msg)
+    claims = dict(
+    role=log.role ,
+    exp= datetime.now() + timedelta(minutes=access_exp),
+    email=log.email,
+    access=True,
+    id=log.pk
+        )
+    token = jwt.encode(claims, super_secret_key, algorithm="HS256")
+    save_access = AuthToken.objects.filter(created_by=log.id, access=True).update(token=token)
+    return dict(access=token)
+
+
 # Login class
 class Login(APIView):
     renderer_classes = [JSONRenderer]
@@ -317,29 +347,288 @@ class Login(APIView):
                     msg = dict(error='Account disabled')
                     return Response(msg)
                 else:
-                    claims = dict(
-                    role=log2.role,
-                    exp= datetime.now() + timedelta(minutes=5),
-                    email=log2.email,
-                    access=True,
-                    id=log2.pk,
-                        )
-                    token = jwt.encode(claims, super_secret_key, algorithm="HS256")
-                    claims2 = dict(
-                    role=log2.role,
-                    exp= datetime.now() + timedelta(minutes=60*24),
-                    email=log2.email,
-                    refresh=True,
-                    id=log2.pk
-                        )
-                    token2 = jwt.encode(claims2, super_secret_key, algorithm="HS256")
-                    msg = dict(access=token, refresh=token2)
-                    return Response(msg)
+                    delete_available_token = delete_auth_token(log2.pk)
+                    if delete_available_token['msg'] == "success":
+                        claims = dict(
+                        role=log2.role,
+                        exp= datetime.now() + timedelta(minutes=access_exp),
+                        email=log2.email,
+                        access=True,
+                        id=log2.pk,
+                            )
+                        token = jwt.encode(claims, super_secret_key, algorithm="HS256")
+                        claims2 = dict(
+                        role=log2.role,
+                        exp= datetime.now() + timedelta(minutes=refresh_exp),
+                        email=log2.email,
+                        refresh=True,
+                        id=log2.pk
+                            )
+                        token2 = jwt.encode(claims2, super_secret_key, algorithm="HS256")
+                        save_access = AuthToken.objects.create(created_by=log2 ,token=token, access=True, refresh=False)
+                        save_access.save()
+                        save_refresh = AuthToken.objects.create(created_by=log2, token=token2, refresh=True, access=False)
+                        save_refresh.save()
+                        if save_access and save_refresh:
+                            msg = dict(access=token, refresh=token2)
+                            return Response(msg)
+                    else:
+                        msg = dict(error='error')
+                        return Response(msg)
 
         except auth_user.DoesNotExist:
             msg = dict(error='Not registered')
             return Response(msg)
-       
+    
+
+    @staticmethod
+    def post(request):
+        token = request.META.get('HTTP_AUTHORIZATION', None)
+        if token == None:
+            msg = dict(error='Authorization header not supplied')
+            return Response(msg)
+
+        token_format = token.split()
+        auth_method = token_format[0]
+        try:
+            token = token_format[1]
+        except:
+            msg = dict(error='No Auth token found')
+            return Response(msg)
+        if auth_method == "Bearer":
+            try:
+                user = jwt.decode(token, super_secret_key, algorithms=['HS256'])
+                user_token = AuthToken.objects.filter(token=token, refresh=True, created_by=user["id"])
+                if user_token.exists():
+                    user_id = user["id"]
+                    role_c = ["user", "admin", "superAdmin", "rider"]
+                    role = user["role"] if user["role"] in role_c else NotFound()
+                    verify = auth_user.objects.get(pk=user_id)
+                    newAccessToken = generateAccess(verify.id)
+                    return Response(newAccessToken)
+                else:
+                    msg = dict(error='Refresh Token Required')
+                    return Response(msg)
+            except jwt.ExpiredSignatureError:
+                msg = dict(error='Refresh token Expired')
+                return Response(msg)
+            except:
+                msg = dict(error='Unauthorized Request.')
+                return Response(msg)
+
+
+
+# check if bearer token is present
+def check_http_auth(request):
+    token = request.META.get('HTTP_AUTHORIZATION', None)
+    if token == None:
+        return dict(error='Authorization header not supplied')
+
+    token_format = token.split()
+    auth_method = token_format[0]
+    try:
+        token = token_format[1]
+    except:
+        return dict(error='No Auth token found')
+    if auth_method == "Bearer":
+        try:
+            user = jwt.decode(token, super_secret_key, algorithms=['HS256'])
+            logs = AuthToken.objects.filter(created_by=user["id"], token=token, access=True)
+            if logs.exists():
+                log = auth_user.objects.get(pk=user["id"])
+                if log.disabled == True:
+                    return dict(error='Account disabled')
+                else:
+                    if user["access"] == True:
+                        return dict(msg=user)
+                    else:
+                        return dict(error='Access Token Required')
+            else:
+                return dict(error='Invalid Token')
+        except jwt.ExpiredSignatureError:
+            return dict(error='Access Token Expired')
+        except:
+            return dict(error='Unauthorized Request.')
+
+
+
+def check_http_auth2(request):
+    token = request.META.get('HTTP_AUTHORIZATION', None)
+    if token == None:
+        pass
+    else:
+        token_format = token.split()
+        auth_method = token_format[0]
+        try:
+            token = token_format[1]
+        except:
+            return dict(error='No Auth token found')
+        if auth_method == "Bearer":
+            try:
+                user = jwt.decode(token, super_secret_key, algorithms=['HS256'])
+                logs = AuthToken.objects.filter(created_by=user["id"], token=token, access=True)
+                if logs.exists():
+                    log = auth_user.objects.get(pk=user["id"])
+                    if log.disabled == True:
+                        return dict(error='Account disabled')
+                    else:
+                        if user["access"] == True:
+                            return dict(msg=user)
+                        else:
+                            return dict(error='Access Token Required')
+                else:
+                    return dict(error='Invalid Token')
+            except jwt.ExpiredSignatureError:
+                return dict(error='Access Token Expired')
+            except:
+                return dict(error='Unauthorized Request.')
+
+
+
+
+class Profile(APIView):
+    renderer_classes = [JSONRenderer]
+
+    @staticmethod
+    def get(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+
+        try: 
+            userD = auth_user.objects.get(pk=claims["msg"]["id"])
+            if userD.role not in set:
+                msg = dict(error="unauthorized Request")
+                return Response(msg)
+            else:
+
+                profile = {
+                    'id': userD.id, 'email': userD.email, 'name': userD.name,
+                    'role': userD.role, 'phone': userD.phone, 'subscribe_news': userD.subscribe_news,
+                    'purchase': userD.purchase, 'seen': userD.seen, 'image': userD.image,
+                    'last_login': userD.last_login, 'is_staff': userD.is_staff, 'updated_by': userD.updated_by,
+                    'disabled': userD.disabled, 'disabled_by': userD.disabled_by, 'created_at': userD.created_at
+                }
+                # billing
+                billings = BillingDetails.objects.filter(user=userD.id)
+                billing = [{'user': bill.user.id, 'address': bill.address, 'apartment': bill.apartment,
+                        'notes': bill.notes, 'id': bill.pk
+                    } for bill in billings]
+                # wishlist
+                wishlists = Wishlist.objects.filter(created_by=userD.id)
+                wishlist = [{'id': wish.pk, 'product_id': wish.product_id.id, 'product_name': wish.product_id.product_name,
+                        'duration': wish.product_id.duration, 'wishlist_created_by': wish.created_by.id,
+                        'discount': wish.product_id.discount, 'category': wish.product_id.category.id,
+                        'price': wish.product_id.price, 'rating': wish.product_id.rating, 'purchase': wish.product_id.purchase,
+                        'description': wish.product_id.description, 'sPrice': wish.product_id.sPrice, 'image': wish.product_id.image,
+                        'mPrice': wish.product_id.mPrice, 'lPrice': wish.product_id.lPrice, 'seen': wish.product_id.seen,
+                        'sPrice_desc': wish.product_id.sPrice_desc, 'mPrice_desc': wish.product_id.mPrice_desc,
+                        'lPrice_desc': wish.product_id.lPrice_desc, 'wishlist_created_at': wish.created_at
+                    } for wish in wishlists]
+                # Orders
+                orders = Orders.objects.filter(created_by=userD.id)
+                order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
+                        'duration': od.duration, 'billing_id': od.billing_id.id,
+                        'delivery_type': od.delivery_type, 'category': od.category.id,
+                        'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
+                        'total': od.total, 'paid': od.paid, 'image': od.image,
+                        'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
+                        'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
+                        'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
+                        'created_by': od.created_by.id,
+                    } for od in orders]
+                msg = dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+                return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error="Invalid user")
+            return Response(msg)
+
+
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+
+        try: 
+            userD = auth_user.objects.get(pk=claims["msg"]["id"])
+            if userD.role not in set:
+                msg = dict(error="unauthorized Request")
+                return Response(msg)
+            else:
+
+                name = json.loads(request.body).get('name', None)
+                email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
+                phone = ValidatePhone(json.loads(request.body).get('phone', None))
+                image = json.loads(request.body).get('image', None)
+
+                if phone['msg'] == "error":
+                    msg = dict(msg="Invalid Phone number")
+                    return Response(msg)
+
+                if email == None or email == "" or name == None or name == "" or phone == None or phone == "":
+                    msg = dict(error='missing email or name or phone')
+                    return Response(msg)
+
+                regis = auth_user.objects.filter(pk=userD.pk).update(email=email, phone=phone['msg'], name=name,
+                        image=ResizeImage(image, 300) if image != "" else userD.image)
+                userD = auth_user.objects.get(pk=userD.pk)
+                profile = {
+                    'id': userD.id, 'email': userD.email, 'name': userD.name,
+                    'role': userD.role, 'phone': userD.phone, 'subscribe_news': userD.subscribe_news,
+                    'purchase': userD.purchase, 'seen': userD.seen, 'image': userD.image,
+                    'last_login': userD.last_login, 'is_staff': userD.is_staff, 'updated_by': userD.updated_by,
+                    'disabled': userD.disabled, 'disabled_by': userD.disabled_by, 'created_at': userD.created_at
+                }
+                # billing
+                billings = BillingDetails.objects.filter(user=userD.id)
+                billing = [{'user': bill.user.id, 'address': bill.address, 'apartment': bill.apartment,
+                        'notes': bill.notes, 'id': bill.pk
+                    } for bill in billings]
+                # wishlist
+                wishlists = Wishlist.objects.filter(created_by=userD.id)
+                wishlist = [{'id': wish.pk, 'product_id': wish.product_id.id, 'product_name': wish.product_id.product_name,
+                        'duration': wish.product_id.duration, 'wishlist_created_by': wish.created_by.id,
+                        'discount': wish.product_id.discount, 'category': wish.product_id.category.id,
+                        'price': wish.product_id.price, 'rating': wish.product_id.rating, 'purchase': wish.product_id.purchase,
+                        'description': wish.product_id.description, 'sPrice': wish.product_id.sPrice, 'image': wish.product_id.image,
+                        'mPrice': wish.product_id.mPrice, 'lPrice': wish.product_id.lPrice, 'seen': wish.product_id.seen,
+                        'sPrice_desc': wish.product_id.sPrice_desc, 'mPrice_desc': wish.product_id.mPrice_desc,
+                        'lPrice_desc': wish.product_id.lPrice_desc, 'wishlist_created_at': wish.created_at
+                    } for wish in wishlists]
+                # Orders
+                orders = Orders.objects.filter(created_by=userD.id)
+                order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
+                        'duration': od.duration, 'billing_id': od.billing_id.id,
+                        'delivery_type': od.delivery_type, 'category': od.category.id,
+                        'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
+                        'total': od.total, 'paid': od.paid, 'image': od.image,
+                        'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
+                        'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
+                        'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
+                        'created_by': od.created_by.id,
+                    } for od in orders]
+                msg = dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+                return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error="Invalid user")
+            return Response(msg)
+
+        
+
+        
+
+
 
 
 
@@ -364,6 +653,7 @@ class HelloView(APIView):
         # 'name': request.query_params.get('name', None),   # worked for  http://127.0.0.1:8000/api/user/sendOtp/?name=dsdd&email=ddsfds
         # all_data = json.loads(request.body)
         # data = json.loads(request.body)[0]
+        # wishlists =Wishlist.objects.filter(product_id__in=Product.objects.all(), created_by=2)
 
         # user = get_user_model().objects.create(email="olorunsholamatins@gmail.com", password="matins12173",
         #     name="matins", pass_id="matins12173", phone="123456789", image="dfdsfdsf")
@@ -373,5 +663,5 @@ class HelloView(APIView):
         # }
         # email = send_email('olorunsholamatins@gmail.com', 'testing', 'demo', context)
         # user = "success"
-        content = {'message': "success"}
+        content = {0: "success", 1: "fdsfdf"}
         return JsonResponse(content)

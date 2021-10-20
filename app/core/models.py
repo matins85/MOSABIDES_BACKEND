@@ -305,8 +305,6 @@ class Review(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
 
-
-
 class Transactions(models.Model):
     product_name = models.CharField(max_length=200, null=False, blank=False)
     order_id = models.CharField(max_length=50, null=False, blank=False)
@@ -318,6 +316,14 @@ class Transactions(models.Model):
     brand = models.CharField(max_length=20, null=True, blank=True)
     created_at = models.DateTimeField(default=now)
     status = models.CharField(max_length=10, choices=PAID)
+
+
+class AuthToken(models.Model):
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token = models.TextField(null=False, blank=False)
+    access = models.BooleanField(default=False, null=False, blank=False)
+    refresh = models.BooleanField(default=False, null=False, blank=False)
+
 
 class Test(models.Model):
     name = models.CharField(max_length=50)
