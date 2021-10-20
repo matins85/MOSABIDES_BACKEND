@@ -50,7 +50,7 @@ services:
       - CELERY_BROKER=${CELERY_BROKER}
       - CELERY_BACKEND=${CELERY_BACKEND}
     env_file:
-      - ./.env
+      - ./.env.sample
     depends_on:
       - db
       - redis
