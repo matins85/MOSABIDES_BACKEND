@@ -46,7 +46,7 @@ auth_user = get_user_model()
 # server email sender email
 EMAIL_SENDER = os.getenv('EMAIL_HOST_USER')
 # salt for password hashing
-salt = bytes(os.getenv('SALT'), 'utf-8')
+salt = bytes(str(os.getenv('SALT')), encoding='utf8')
 # refresh token exp time
 refresh_exp = 60*24
 # acces token expire time
