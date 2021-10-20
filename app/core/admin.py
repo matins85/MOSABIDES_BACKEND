@@ -6,22 +6,24 @@ from core import models
 # Register your models here.
 class UserAdmin(BaseUserAdmin):
     ordering = ['id']
-    list_display = ['email', 'name', 'disabled', 'role', 'phone',
+    list_display = ['email', 'name', 'disabled', 'role', 'phone', 'disabled',
         'subscribe_news', 'purchase', 'phone', 'image', 'last_login', 
         'disabled_by', 'password', 'updated_by', 'created_at', 'pass_id', 'seen']
     fieldsets = (
-        (None, {'fields': ('email', 'password',)}),
+        (None, {'fields': ('email', 'password', 'role', 'phone', 'subscribe_news',
+            'purchase', 'image', 'disabled_by', 'updated_by', 'pass_id', 'seen',
+        )}),
         (_('Personal Info'), {'fields': ('name',)}),
         (
             _('Permissions'),
-            {'fields': ('is_active', 'is_staff', 'is_superuser')}
+            {'fields': ('is_active', 'is_staff', 'is_superuser', 'disabled')}
         ),
         (_('Important dates'), {'fields': ('last_login','created_at',)})
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'name', 'disabled', 'role', 'phone',
+            'fields': ('email', 'name', 'disabled', 'role', 'phone', 'disabled',
         'subscribe_news', 'purchase', 'phone', 'image', 'last_login', 
         'disabled_by', 'password', 'updated_by', 'created_at', 'pass_id', 'seen')
         }),

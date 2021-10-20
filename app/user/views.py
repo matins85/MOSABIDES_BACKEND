@@ -35,7 +35,7 @@ import phonenumbers
 import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, \
-    Wishlist, BillingDetails, Orders
+    Wishlist, BillingDetails, Orders, AddPendingEmail
 
 
 now = datetime.now()
@@ -46,7 +46,7 @@ auth_user = get_user_model()
 # server email sender email
 EMAIL_SENDER = os.getenv('EMAIL_HOST_USER')
 # salt for password hashing
-salt = bytes(str(os.getenv('SALT')), encoding='utf8')
+# salt = bytes(os.getenv('SALT'), encoding='utf8')
 # refresh token exp time
 refresh_exp = 60*24
 # acces token expire time
@@ -79,11 +79,11 @@ def hash_password(password):
     key = hashlib.pbkdf2_hmac(
         'sha256',
         password.encode('utf-8'),
-        salt,
+        bytes(os.getenv('SALT'), encoding='utf8'),
         100000,
-        dklen=20
+        dklen=30
     )
-    return key
+    return str(key)
 
 
 # validate phone number
@@ -174,15 +174,14 @@ def ResizeImage(img, size):
 # delete expired email otp and used ones
 def check_email_otp():
     rows = EmailOtp.objects.filter(Q(expd=True) | Q(used=True)) 
-    for row in rows:
-        row.delete()
+    delete_log = [row.delete() for row in rows]
+    return delete_log
 
 # delete send otp email in database when request another
 def check_email_otp2(email):
     rows = EmailOtp.objects.filter(email=email)
-    for row in rows:
-        row.delete()
-
+    delete_log = [row.delete() for row in rows]
+    return delete_log
 
 
 class Register(APIView):
@@ -192,7 +191,6 @@ class Register(APIView):
     @staticmethod
     def get(request):
         delet_otp = check_email_otp()
-        msg = dict()
         name = json.loads(request.body).get('name', None)
         email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
         phone = ValidatePhone(json.loads(request.body).get('phone', None))
@@ -207,7 +205,7 @@ class Register(APIView):
 
         try:
             check_if_register = auth_user.objects.get(email=email)
-            msg = dict(error='email already exists')
+            msg = dict(error='Email already exists')
             return Response(msg)
         except auth_user.DoesNotExist:
             delete_existing_email = check_email_otp2(email)
@@ -233,7 +231,6 @@ class Register(APIView):
     @staticmethod
     def post(request):
         delet_otp = check_email_otp()
-        msg = dict()
         name = json.loads(request.body).get('name', None)
         email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
         password = json.loads(request.body).get('password', None)
@@ -252,7 +249,7 @@ class Register(APIView):
 
         try:
             check_if_register = auth_user.objects.get(email=email)
-            msg = dict(error='email already exists')
+            msg = dict(error='Email already exists')
             return Response(msg)
         except auth_user.DoesNotExist:
     
@@ -287,13 +284,12 @@ class Register(APIView):
                         return Response(msg)
 
 
-
+# delete user bearer token when re-request 
 def delete_auth_token(id):
     logs = AuthToken.objects.filter(created_by=id)
     if logs.exists():
-        for log in logs:
-            log.delete()
-            return dict(msg='success')
+        delete_log = [log.delete() for log in logs]
+        return dict(msg='success')
     else:
         return dict(msg='success')
 
@@ -317,9 +313,13 @@ def generateAccess(id):
     return dict(access=token)
 
 
+
+
 # Login class
 class Login(APIView):
     renderer_classes = [JSONRenderer]
+
+    # login function
     @staticmethod
     def get(request):
                 
@@ -381,6 +381,7 @@ class Login(APIView):
             return Response(msg)
     
 
+    # request refresh token
     @staticmethod
     def post(request):
         token = request.META.get('HTTP_AUTHORIZATION', None)
@@ -489,6 +490,7 @@ def check_http_auth2(request):
 class Profile(APIView):
     renderer_classes = [JSONRenderer]
 
+    # user get profile details
     @staticmethod
     def get(request):
         claims = check_http_auth(request)
@@ -503,7 +505,7 @@ class Profile(APIView):
         try: 
             userD = auth_user.objects.get(pk=claims["msg"]["id"])
             if userD.role not in set:
-                msg = dict(error="unauthorized Request")
+                msg = dict(error="Unauthorized Request")
                 return Response(msg)
             else:
 
@@ -549,6 +551,7 @@ class Profile(APIView):
             return Response(msg)
 
 
+    # user update account
     @staticmethod
     def put(request):
         claims = check_http_auth(request)
@@ -563,7 +566,7 @@ class Profile(APIView):
         try: 
             userD = auth_user.objects.get(pk=claims["msg"]["id"])
             if userD.role not in set:
-                msg = dict(error="unauthorized Request")
+                msg = dict(error="Unauthorized Request")
                 return Response(msg)
             else:
 
@@ -624,9 +627,208 @@ class Profile(APIView):
             msg = dict(error="Invalid user")
             return Response(msg)
 
-        
+
+    # user delete account
+    @staticmethod
+    def delete(request):
+        claims = check_http_auth(request)
+        set = ["user"]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+
+        try: 
+            userD = auth_user.objects.get(pk=claims["msg"]["id"])
+            if userD.role not in set:
+                msg = dict(error="Unauthorized Request")
+                return Response(msg)
+            else:
+                delete_user = userD.delete()
+                msg = dict(msg='success')
+                return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error="Invalid user")
+            return Response(msg)
+
+
+    # user disable account
+    @staticmethod
+    def post(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+
+        try: 
+            userD = auth_user.objects.get(pk=claims["msg"]["id"])
+            if userD.role not in set:
+                msg = dict(error="Unauthorized Request")
+                return Response(msg)
+            else:
+                regis = auth_user.objects.filter(pk=userD.pk).update(disabled=True, disabled_by=userD)
+                msg = dict(msg='success')
+                return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error="Invalid user")
+            return Response(msg)
 
         
+
+
+class ChangePassword(APIView):
+    renderer_classes = [JSONRenderer]
+    # request change password
+    @staticmethod
+    def post(request):
+
+        delet_otp = check_email_otp()
+        email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
+        
+        if email == None or email == "":
+            msg = dict(error='email is required')
+            return Response(msg)
+        try:
+            check_if_register = auth_user.objects.get(email=email)
+            delete_existing_email = check_email_otp2(email)
+            gen_otp = get_random_numeric_string(6)
+            copy_g = copy.copy(gen_otp)
+            context = dict(msg=copy_g, name=check_if_register.name)
+            sendcode2 = send_email(email, 'Reset password code', 'resetPassword', context)
+            if sendcode2["msg"] == "success":
+                send_otp = EmailOtp.objects.create(code=copy_g, email=email)
+                send_otp.save()
+                if send_otp:
+                    msg = dict(msg="success")
+                    return Response(msg)
+                else:
+                    msg = dict(error="error")
+                    return Response(msg)
+            else:
+                msg = dict(error='error')
+                return Response(msg)
+
+        except auth_user.DoesNotExist:
+            msg = dict(error='Email does not exists')
+            return Response(msg)
+    
+
+    # change password when already logged-in
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        old = request.query_params.get('old', None)
+        new = request.query_params.get('new', None)
+        if old == None or old == "" or new == None or new == "":
+            msg = dict(error='Missing old_password or new_password')
+            return Response(msg)
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        
+        try: 
+            userD = auth_user.objects.get(pk=claims["msg"]["id"])
+            if userD.role not in set:
+                msg = dict(error="Unauthorized Request")
+                return Response(msg)
+            else:
+                hash = hash_password(old)
+                copy_hash = copy.copy(hash)
+                if not auth_user.objects.filter(pk=userD.pk, pass_id=copy_hash).exists():
+                    msg = dict(msg="Invalid password")
+                    return Response(msg)
+                else:
+                    hash = hash_password(new)
+                    copy_hash = copy.copy(hash)
+                    regis = auth_user.objects.filter(pk=userD.pk).update(pass_id=copy_hash)
+                    msg = dict(msg='success')
+                    return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error="Invalid user")
+            return Response(msg)
+
+
+
+
+class VerifyPassword(APIView):
+    renderer_classes = [JSONRenderer]
+    # verify otp reset password
+    @staticmethod
+    def get(request):
+        delet_otp = check_email_otp()
+
+        email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
+        otp = json.loads(request.body).get('otp', None)
+
+        if email == None or email == "" or otp == None or otp == "":
+            msg = dict(error='missing email or otp')
+            return Response(msg)
+
+        try:
+            check_if_register = auth_user.objects.get(email=email)
+            if not EmailOtp.objects.filter(code=otp, email=email, used=False).exists():
+                msg = dict(error='Invalid Otp')
+                return Response(msg)
+            else:
+                verify_otp2 = EmailOtp.objects.get(code=otp, email=email, used=False)
+                if int(time.time()) > int(verify_otp2.expT):
+                    verify_otp2.expd = True
+                    verify_otp2.save()
+                    msg = dict(error='OTP Expired')
+                    return Response(msg)
+                else:
+                    update_otp = EmailOtp.objects.filter(code=otp, email=email, used=False).update(used=True)
+                    msg = dict(msg="success")
+                    return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error='Email does not exists')
+            return Response(msg)
+            
+
+    @staticmethod
+    def post(request):
+
+        email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
+        otp = json.loads(request.body).get('otp', None)
+        password = json.loads(request.body).get('password', None)
+
+        if email == None or email == "" or otp == None or otp == "" or password == None or password == "":
+            msg = dict(error='missing email or otp or password')
+            return Response(msg)
+
+        try:
+            check_if_register = auth_user.objects.get(email=email)
+            if not EmailOtp.objects.filter(code=otp, email=email, used=True).exists():
+                msg = dict(error='Invalid Otp')
+                return Response(msg)
+            else:
+                verify_otp2 = EmailOtp.objects.get(code=otp, email=email, used=True)
+                hash = hash_password(password)
+                copy_hash = copy.copy(hash)
+                save_email = AddPendingEmail.objects.create(status="pending", email=check_if_register.email, subject="reset_password")
+                add_notify = Notification.objects.create(subject="Reset-password", item_id=check_if_register.pk,
+                    email=check_if_register.email, body=f"{check_if_register.name} Reset his/her password",
+                    edit_by=check_if_register, name=check_if_register.name)
+                regis = auth_user.objects.filter(pk=check_if_register.pk).update(pass_id=copy_hash)
+                save_email.save()
+                add_notify.save()
+                verify_otp2.delete()
+                msg = dict(msg="success")
+                return Response(msg)
+        except auth_user.DoesNotExist:
+            msg = dict(error='Email does not exists')
+            return Response(msg)
 
 
 
@@ -662,6 +864,6 @@ class HelloView(APIView):
         #     'password': password
         # }
         # email = send_email('olorunsholamatins@gmail.com', 'testing', 'demo', context)
-        # user = "success"
-        content = {0: "success", 1: "fdsfdf"}
+        user = hash_password('password')
+        content = {'password': user}
         return JsonResponse(content)
