@@ -31,6 +31,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 import phonenumbers
+from cryptography.fernet import Fernet
 # from passlib.hash import pbkdf2_sha256
 import random
 from django.db.models import Q
@@ -76,14 +77,26 @@ def get_random_numeric_string(length):
 
 # hash password function 
 def hash_password(password):
-    key = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        bytes(os.getenv('SALT'), encoding='utf8'),
-        100000,
-        dklen=30
-    )
-    return str(key)
+    # key = hashlib.pbkdf2_hmac(
+    #     'sha256',
+    #     password.encode('utf-8'),
+    #     bytes(os.getenv('SALT'), encoding='utf8'),
+    #     100000,
+    #     dklen=30
+    # )
+    key = os.getenv('SALT2')
+    f = Fernet(key)
+    token = f.encrypt(bytes(password, encoding='utf8'))
+    return str(token.decode())
+
+
+# decrypt password function 
+def decrypt_password(password):
+    key = os.getenv('SALT2')
+    f = Fernet(key)
+    token = f.decrypt(bytes(bytes(password, encoding='utf8'))).decode()
+    return str(token)
+
 
 
 # validate phone number
@@ -333,13 +346,11 @@ class Login(APIView):
             msg = dict(error='Missing email or password')
             return Response(msg)
 
-        hash = hash_password(password)
-        copy_hash = copy.copy(hash)
-
         try:
             log2 = auth_user.objects.get(email=email)
-            log = auth_user.objects.filter(email=email, pass_id=copy_hash)
-            if not log.exists():
+            decrypt = decrypt_password(log2.pass_id)
+            copy_decrypt = copy.copy(decrypt) 
+            if not copy_decrypt == password:
                 msg = dict(error='Incorrect email or password')
                 return Response(msg)
             else:
@@ -743,9 +754,9 @@ class ChangePassword(APIView):
                 msg = dict(error="Unauthorized Request")
                 return Response(msg)
             else:
-                hash = hash_password(old)
-                copy_hash = copy.copy(hash)
-                if not auth_user.objects.filter(pk=userD.pk, pass_id=copy_hash).exists():
+                decrypt = decrypt_password(userD.pass_id)
+                copy_decrypt = copy.copy(decrypt) 
+                if not copy_decrypt == old:
                     msg = dict(msg="Invalid password")
                     return Response(msg)
                 else:
@@ -865,5 +876,6 @@ class HelloView(APIView):
         # }
         # email = send_email('olorunsholamatins@gmail.com', 'testing', 'demo', context)
         user = hash_password('password')
+        # user = decrypt_password(password)
         content = {'password': user}
         return JsonResponse(content)
