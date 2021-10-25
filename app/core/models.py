@@ -166,7 +166,7 @@ class ContactUs(models.Model):
     description = models.TextField(null=False, blank=False)
     seen = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=now)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
 
 
 class SpecialOrder(models.Model):

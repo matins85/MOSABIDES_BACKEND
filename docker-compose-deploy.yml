@@ -33,7 +33,7 @@ services:
     depends_on:
       - app
     ports:
-      - 30:3000
+      - 80:8000
     volumes:
       - static-data:/vol/static
   redis:

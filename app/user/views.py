@@ -39,6 +39,9 @@ from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthTo
     Wishlist, BillingDetails, Orders, AddPendingEmail
 
 
+# special order resize size 
+    # profile = 300,  special_order = 600
+
 now = datetime.now()
 # jwt secret key
 super_secret_key = os.getenv('JWT')
@@ -151,11 +154,18 @@ def decode_image(src):
     img = base64.urlsafe_b64decode(data)
     # 3, the binary file is saved
     filename = "{}.{}".format(uuid.uuid4(), ext)
-    completeName = os.path.join(request.folder,'demo/static', filename)
+    completeName = os.path.join(settings.STATIC_ROOT, filename)
     with open(completeName, "wb") as f:
         f.write(img)
     return filename
 
+
+def decode_image2(src):
+    import re
+    result = re.search("data:image/(?P<ext>.*?);base64,(?P<data>.*)", str(src), re.DOTALL)
+    ext = result.groupdict().get("ext")
+    data = result.groupdict().get("data")
+    return data
 
 
 def ResizeImage(img, size):
@@ -180,7 +190,7 @@ def ResizeImage(img, size):
     stream = encode_image(picture_path)
     if os.path.exists(picture_path):
         rv = os.remove(picture_path)
-    return decode_image(stream)
+    return decode_image2(stream)
 
 
 
@@ -233,10 +243,10 @@ class Register(APIView):
                     msg = dict(msg="success")
                     return Response(msg)
                 else:
-                    msg = dict(error="error")
+                    msg = dict(error='error')
                     return Response(msg)
             else:
-                msg = dict(error="error")
+                msg = dict(error='error')
                 return Response(msg)
         
 
@@ -287,7 +297,7 @@ class Register(APIView):
                     if regis:
                         add_notify = Notification.objects.create(subject="registration", item_id=regis.id, email=email, 
                             body=f"{name} has completed the signup for Mosabides account", 
-                            edit_by=auth_user.objects.get(pk=regis.id),name=name)
+                            edit_by=auth_user.objects.get(pk=regis.id), name=name)
                         add_notify.save()
                         verify_otp2.delete()
                         msg = dict(msg="success")
@@ -809,7 +819,7 @@ class VerifyPassword(APIView):
 
     @staticmethod
     def post(request):
-
+    
         email = json.loads(request.body).get('email', '').translate({ord(c): None for c in string.whitespace})
         otp = json.loads(request.body).get('otp', None)
         password = json.loads(request.body).get('password', None)
@@ -817,7 +827,6 @@ class VerifyPassword(APIView):
         if email == None or email == "" or otp == None or otp == "" or password == None or password == "":
             msg = dict(error='missing email or otp or password')
             return Response(msg)
-
         try:
             check_if_register = auth_user.objects.get(email=email)
             if not EmailOtp.objects.filter(code=otp, email=email, used=True).exists():
@@ -871,11 +880,14 @@ class HelloView(APIView):
         # user = get_user_model().objects.create(email="olorunsholamatins@gmail.com", password="matins12173",
         #     name="matins", pass_id="matins12173", phone="123456789", image="dfdsfdsf")
         # save = user.save()
-        # context = {
-        #     'password': password
-        # }
+        context = {
+            'msg': 'sddsd',
+            'name': 'dsfdsfd'
+        }
         # email = send_email('olorunsholamatins@gmail.com', 'testing', 'demo', context)
-        user = hash_password('password')
+        # image = json.loads(request.body).get('image', None)
+        # image2 = ResizeImage(image, 768)
+        # user = hash_password('password')
         # user = decrypt_password(password)
-        content = {'password': user}
+        content = {'password': context}
         return JsonResponse(content)

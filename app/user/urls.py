@@ -1,5 +1,5 @@
 from django.urls import path
-from user import views
+from user import views, views2
 
 app_name = 'user'
 
@@ -11,5 +11,7 @@ urlpatterns = [
     path('profile/', views.Profile.as_view(), name='profile'),
     path('changePassword/', views.ChangePassword.as_view(), name='change-password'),
     path('verifyPassword/', views.VerifyPassword.as_view(), name='verify-password'),
+    path('emailUs/', views2.Contact_Us.as_view(), name='email-us'),
+    path('specialOrder/', views2.Special_order.as_view(), name='special-order'),
 ]
 
