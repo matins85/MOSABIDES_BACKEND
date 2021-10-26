@@ -105,9 +105,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     disabled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
             blank=True, related_name='deactivate_by')
     created_at = models.CharField(max_length=50, default=now2, null=True)
-    
     objects = UserManager()
-
     USERNAME_FIELD = 'email'
 
 
@@ -247,7 +245,7 @@ class Orders(models.Model):
     # top_up = models.ManyToManyField(Top_up, related_name='top_up')
     top_up = JSONField(null=False, blank=False)
     quantity = models.IntegerField(null=False, blank=False)
-    paid = models.CharField(max_length=10, choices=PAID, default='pending')
+    paid_status = models.CharField(max_length=10, choices=PAID, default='pending')
     created_at = models.DateTimeField(default=now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
             related_name='created_by')
@@ -328,3 +326,4 @@ class AuthToken(models.Model):
 class Test(models.Model):
     name = models.CharField(max_length=50)
     age = models.IntegerField()
+    

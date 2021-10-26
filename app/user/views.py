@@ -32,7 +32,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import phonenumbers
 from cryptography.fernet import Fernet
-# from passlib.hash import pbkdf2_sha256
+from passlib.hash import pbkdf2_sha256
 import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, \
@@ -77,16 +77,14 @@ def get_random_numeric_string(length):
     result_str = ''.join((random.choice(letters_and_digits) for i in range(length)))
     return result_str
 
+# hash password for api access function 
+def hash_api_access(email):
+    result = hashlib.md5(email.encode())
+    return result.hexdigest()
+   
 
 # hash password function 
 def hash_password(password):
-    # key = hashlib.pbkdf2_hmac(
-    #     'sha256',
-    #     password.encode('utf-8'),
-    #     bytes(os.getenv('SALT'), encoding='utf8'),
-    #     100000,
-    #     dklen=30
-    # )
     key = os.getenv('SALT2')
     f = Fernet(key)
     token = f.encrypt(bytes(password, encoding='utf8'))
@@ -194,11 +192,23 @@ def ResizeImage(img, size):
 
 
 
+# generate refresh token
+def authenticate_api_access(request):
+    key = os.getenv('API_ACCESS')
+    code = request.query_params.get('code', None)
+    if str(key) == str(code):
+        return dict(msg="access")
+    else:
+        return dict(msg="error")
+
+
+
 # delete expired email otp and used ones
 def check_email_otp():
     rows = EmailOtp.objects.filter(Q(expd=True) | Q(used=True)) 
     delete_log = [row.delete() for row in rows]
     return delete_log
+
 
 # delete send otp email in database when request another
 def check_email_otp2(email):
@@ -307,6 +317,8 @@ class Register(APIView):
                         return Response(msg)
 
 
+
+
 # delete user bearer token when re-request 
 def delete_auth_token(id):
     logs = AuthToken.objects.filter(created_by=id)
@@ -334,7 +346,6 @@ def generateAccess(id):
     token = jwt.encode(claims, super_secret_key, algorithm="HS256")
     save_access = AuthToken.objects.filter(created_by=log.id, access=True).update(token=token)
     return dict(access=token)
-
 
 
 
@@ -390,6 +401,8 @@ class Login(APIView):
                         save_access.save()
                         save_refresh = AuthToken.objects.create(created_by=log2, token=token2, refresh=True, access=False)
                         save_refresh.save()
+                        log2.last_login = now
+                        log2.save()
                         if save_access and save_refresh:
                             msg = dict(access=token, refresh=token2)
                             return Response(msg)
@@ -506,14 +519,60 @@ def check_http_auth2(request):
                 return dict(error='Unauthorized Request.')
 
 
+# return user details for food item and profile
+def Return_profile_details(userD):
+    # userD = auth_user.objects.get(pk=id)
+    # profile
+    profile = {
+        'id': userD.id, 'email': userD.email, 'name': userD.name,
+        'role': userD.role, 'phone': userD.phone, 'subscribe_news': userD.subscribe_news,
+        'purchase': userD.purchase, 'seen': userD.seen, 'image': userD.image,
+        'last_login': userD.last_login, 'is_staff': userD.is_staff, 'updated_by': userD.updated_by,
+        'disabled': userD.disabled, 'disabled_by': userD.disabled_by, 'created_at': userD.created_at
+    }
+    # billing
+    billings = BillingDetails.objects.filter(user=userD.id)
+    billing = [{'user': bill.user.id, 'address': bill.address, 'apartment': bill.apartment,
+            'notes': bill.notes, 'id': bill.pk
+        } for bill in billings]
+    # wishlist
+    wishlists = Wishlist.objects.filter(created_by=userD.id)
+    wishlist = [{'id': wish.pk, 'product_id': wish.product_id.id, 'product_name': wish.product_id.product_name,
+            'duration': wish.product_id.duration, 'wishlist_created_by': wish.created_by.id,
+            'discount': wish.product_id.discount, 'category': wish.product_id.category.id,
+            'price': wish.product_id.price, 'rating': wish.product_id.rating, 'purchase': wish.product_id.purchase,
+            'description': wish.product_id.description, 'sPrice': wish.product_id.sPrice, 'image': wish.product_id.image,
+            'mPrice': wish.product_id.mPrice, 'lPrice': wish.product_id.lPrice, 'seen': wish.product_id.seen,
+            'sPrice_desc': wish.product_id.sPrice_desc, 'mPrice_desc': wish.product_id.mPrice_desc,
+            'lPrice_desc': wish.product_id.lPrice_desc, 'wishlist_created_at': wish.created_at
+        } for wish in wishlists]
+    # Orders
+    orders = Orders.objects.filter(created_by=userD.id)
+    order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
+            'duration': od.duration, 'billing_id': od.billing_id.id,
+            'delivery_type': od.delivery_type, 'category': od.category.id,
+            'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
+            'total': od.total, 'paid': od.paid, 'image': od.image,
+            'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
+            'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
+            'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
+            'created_by': od.created_by.id,
+        } for od in orders]
+    return dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+
+
+
 
 
 class Profile(APIView):
     renderer_classes = [JSONRenderer]
-
     # user get profile details
     @staticmethod
     def get(request):
+        check_access = authenticate_api_access(request)
+        if check_access['msg'] == 'error':
+            msg = dict(msg='Unauthorized To Access Endpoint')
+            return Response(msg)
         claims = check_http_auth(request)
         set = ["user", "admin", "superAdmin", "rider"]
 
@@ -529,43 +588,7 @@ class Profile(APIView):
                 msg = dict(error="Unauthorized Request")
                 return Response(msg)
             else:
-
-                profile = {
-                    'id': userD.id, 'email': userD.email, 'name': userD.name,
-                    'role': userD.role, 'phone': userD.phone, 'subscribe_news': userD.subscribe_news,
-                    'purchase': userD.purchase, 'seen': userD.seen, 'image': userD.image,
-                    'last_login': userD.last_login, 'is_staff': userD.is_staff, 'updated_by': userD.updated_by,
-                    'disabled': userD.disabled, 'disabled_by': userD.disabled_by, 'created_at': userD.created_at
-                }
-                # billing
-                billings = BillingDetails.objects.filter(user=userD.id)
-                billing = [{'user': bill.user.id, 'address': bill.address, 'apartment': bill.apartment,
-                        'notes': bill.notes, 'id': bill.pk
-                    } for bill in billings]
-                # wishlist
-                wishlists = Wishlist.objects.filter(created_by=userD.id)
-                wishlist = [{'id': wish.pk, 'product_id': wish.product_id.id, 'product_name': wish.product_id.product_name,
-                        'duration': wish.product_id.duration, 'wishlist_created_by': wish.created_by.id,
-                        'discount': wish.product_id.discount, 'category': wish.product_id.category.id,
-                        'price': wish.product_id.price, 'rating': wish.product_id.rating, 'purchase': wish.product_id.purchase,
-                        'description': wish.product_id.description, 'sPrice': wish.product_id.sPrice, 'image': wish.product_id.image,
-                        'mPrice': wish.product_id.mPrice, 'lPrice': wish.product_id.lPrice, 'seen': wish.product_id.seen,
-                        'sPrice_desc': wish.product_id.sPrice_desc, 'mPrice_desc': wish.product_id.mPrice_desc,
-                        'lPrice_desc': wish.product_id.lPrice_desc, 'wishlist_created_at': wish.created_at
-                    } for wish in wishlists]
-                # Orders
-                orders = Orders.objects.filter(created_by=userD.id)
-                order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
-                        'duration': od.duration, 'billing_id': od.billing_id.id,
-                        'delivery_type': od.delivery_type, 'category': od.category.id,
-                        'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
-                        'total': od.total, 'paid': od.paid, 'image': od.image,
-                        'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
-                        'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
-                        'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
-                        'created_by': od.created_by.id,
-                    } for od in orders]
-                msg = dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+                msg = Return_profile_details(userD)
                 return Response(msg)
         except auth_user.DoesNotExist:
             msg = dict(error="Invalid user")
@@ -607,42 +630,7 @@ class Profile(APIView):
                 regis = auth_user.objects.filter(pk=userD.pk).update(email=email, phone=phone['msg'], name=name,
                         image=ResizeImage(image, 300) if image != "" else userD.image)
                 userD = auth_user.objects.get(pk=userD.pk)
-                profile = {
-                    'id': userD.id, 'email': userD.email, 'name': userD.name,
-                    'role': userD.role, 'phone': userD.phone, 'subscribe_news': userD.subscribe_news,
-                    'purchase': userD.purchase, 'seen': userD.seen, 'image': userD.image,
-                    'last_login': userD.last_login, 'is_staff': userD.is_staff, 'updated_by': userD.updated_by,
-                    'disabled': userD.disabled, 'disabled_by': userD.disabled_by, 'created_at': userD.created_at
-                }
-                # billing
-                billings = BillingDetails.objects.filter(user=userD.id)
-                billing = [{'user': bill.user.id, 'address': bill.address, 'apartment': bill.apartment,
-                        'notes': bill.notes, 'id': bill.pk
-                    } for bill in billings]
-                # wishlist
-                wishlists = Wishlist.objects.filter(created_by=userD.id)
-                wishlist = [{'id': wish.pk, 'product_id': wish.product_id.id, 'product_name': wish.product_id.product_name,
-                        'duration': wish.product_id.duration, 'wishlist_created_by': wish.created_by.id,
-                        'discount': wish.product_id.discount, 'category': wish.product_id.category.id,
-                        'price': wish.product_id.price, 'rating': wish.product_id.rating, 'purchase': wish.product_id.purchase,
-                        'description': wish.product_id.description, 'sPrice': wish.product_id.sPrice, 'image': wish.product_id.image,
-                        'mPrice': wish.product_id.mPrice, 'lPrice': wish.product_id.lPrice, 'seen': wish.product_id.seen,
-                        'sPrice_desc': wish.product_id.sPrice_desc, 'mPrice_desc': wish.product_id.mPrice_desc,
-                        'lPrice_desc': wish.product_id.lPrice_desc, 'wishlist_created_at': wish.created_at
-                    } for wish in wishlists]
-                # Orders
-                orders = Orders.objects.filter(created_by=userD.id)
-                order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
-                        'duration': od.duration, 'billing_id': od.billing_id.id,
-                        'delivery_type': od.delivery_type, 'category': od.category.id,
-                        'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
-                        'total': od.total, 'paid': od.paid, 'image': od.image,
-                        'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
-                        'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
-                        'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
-                        'created_by': od.created_by.id,
-                    } for od in orders]
-                msg = dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+                msg = Return_profile_details(userD)
                 return Response(msg)
         except auth_user.DoesNotExist:
             msg = dict(error="Invalid user")
@@ -882,12 +870,12 @@ class HelloView(APIView):
         # save = user.save()
         context = {
             'msg': 'sddsd',
-            'name': 'dsfdsfd'
+            'name': 'jgjh',
         }
         # email = send_email('olorunsholamatins@gmail.com', 'testing', 'demo', context)
         # image = json.loads(request.body).get('image', None)
         # image2 = ResizeImage(image, 768)
-        # user = hash_password('password')
+        # user = hash_password('password')dfds
         # user = decrypt_password(password)
         content = {'password': context}
         return JsonResponse(content)

@@ -13,5 +13,8 @@ urlpatterns = [
     path('verifyPassword/', views.VerifyPassword.as_view(), name='verify-password'),
     path('emailUs/', views2.Contact_Us.as_view(), name='email-us'),
     path('specialOrder/', views2.Special_order.as_view(), name='special-order'),
+    path('wishlist/', views2.AddWishlist.as_view(), name='wishlist'),
+    path('billing/', views2.Billing.as_view(), name='billing'),
+    path('ALL_ITEM/', views2.ALL_ITEM.as_view(), name='all-item'),
 ]
 

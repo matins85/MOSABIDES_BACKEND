@@ -54,3 +54,4 @@ admin.site.register(models.BillingDetails)
 admin.site.register(models.Coupon)
 
 
+

@@ -4,6 +4,8 @@ services:
   app:
     build:
       context: .
+      # context: ./proxy
+      # dockerfile: Dockerfile
     restart: always
     volumes:
       - static-data:/vol/web
