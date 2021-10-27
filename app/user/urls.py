@@ -15,6 +15,7 @@ urlpatterns = [
     path('specialOrder/', views2.Special_order.as_view(), name='special-order'),
     path('wishlist/', views2.AddWishlist.as_view(), name='wishlist'),
     path('billing/', views2.Billing.as_view(), name='billing'),
-    path('ALL_ITEM/', views2.ALL_ITEM.as_view(), name='all-item'),
+    path('updateDelete/', views2.Update_delete.as_view(), name='update-delete'),
+    path('addReview/', views2.AddRewview.as_view(), name='add-review'),
 ]
 

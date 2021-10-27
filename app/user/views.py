@@ -37,7 +37,7 @@ import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, \
     Wishlist, BillingDetails, Orders, AddPendingEmail
-
+from rest_framework import permissions
 
 # special order resize size 
     # profile = 300,  special_order = 600
@@ -189,17 +189,6 @@ def ResizeImage(img, size):
     if os.path.exists(picture_path):
         rv = os.remove(picture_path)
     return decode_image2(stream)
-
-
-
-# generate refresh token
-def authenticate_api_access(request):
-    key = os.getenv('API_ACCESS')
-    code = request.query_params.get('code', None)
-    if str(key) == str(code):
-        return dict(msg="access")
-    else:
-        return dict(msg="error")
 
 
 
@@ -555,10 +544,14 @@ def Return_profile_details(userD):
             'total': od.total, 'paid': od.paid, 'image': od.image,
             'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
             'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
-            'quantity': od.quantity, 'paid': od.paid, 'created_at': od.created_at,
-            'created_by': od.created_by.id,
-        } for od in orders]
-    return dict(profile=profile, billing=billing, wishlist=wishlist, order=order)
+            'quantity': od.quantity, 'paid_status': od.paid_status, 'created_at': od.created_at,
+            'created_by': od.created_by.id} for od in orders]
+    orders2 = Orders.objects.filter(created_by=userD.id)[0]
+    order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
+                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone}
+    return dict(profile=profile, billing=billing, wishlist=wishlist, 
+        order=dict(order=order, billing_user=order_billing))
 
 
 
@@ -569,10 +562,6 @@ class Profile(APIView):
     # user get profile details
     @staticmethod
     def get(request):
-        check_access = authenticate_api_access(request)
-        if check_access['msg'] == 'error':
-            msg = dict(msg='Unauthorized To Access Endpoint')
-            return Response(msg)
         claims = check_http_auth(request)
         set = ["user", "admin", "superAdmin", "rider"]
 
