@@ -17,5 +17,6 @@ urlpatterns = [
     path('billing/', views2.Billing.as_view(), name='billing'),
     path('updateDelete/', views2.Update_delete.as_view(), name='update-delete'),
     path('addReview/', views2.AddRewview.as_view(), name='add-review'),
+    path('order/', views2.OrderPurchase.as_view(), name='order'),
 ]
 

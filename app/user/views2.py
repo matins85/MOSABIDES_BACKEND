@@ -24,8 +24,9 @@ import phonenumbers
 import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, Task, \
-    Wishlist, BillingDetails, Orders, AddPendingEmail, SpecialOrder, Coupon, Review, Transactions
-from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage
+    Wishlist, BillingDetails, Orders, AddPendingEmail, SpecialOrder, Coupon, Review, Transactions, \
+    AddOrderPendingEmail, Category
+from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage, get_random_numeric_string
 
 auth_user = get_user_model()
 
@@ -60,18 +61,19 @@ def Return_profile_details(userD):
     # Orders
     orders = Orders.objects.filter(created_by=userD.id)
     order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
-            'duration': od.duration, 'billing_id': od.billing_id.id,
-            'delivery_type': od.delivery_type, 'category': od.category.id,
-            'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
-            'total': od.total, 'paid': od.paid, 'image': od.image,
+            'billing_id': od.billing_id.id,
+            'delivery_type': od.delivery_type, 'category': od.category,
+            'price': od.price, 'order_id': od.order_id, 'paid': od.paid, 'image': od.product_id.image,
             'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
-            'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
-            'quantity': od.quantity, 'paid_status': od.paid_status, 'created_at': od.created_at,
+            'delivery_status': od.delivery_status, 'top_up': od.top_up, 'quantity': od.quantity, 
+            'paid_status': od.paid_status, 'created_at': od.created_at,
             'created_by': od.created_by.id} for od in orders]
     orders2 = Orders.objects.filter(created_by=userD.id)[0]
     order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                'rider_name': orders2.assigned_to.name, 'rider_phone': orders2.assigned_to.phone,
                 'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
-                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone}
+                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
+                'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
     return dict(profile=profile, billing=billing, wishlist=wishlist, 
         order=dict(order=order, billing_user=order_billing))
 
@@ -542,4 +544,114 @@ class Update_delete(APIView):
                 msg = dict(error='Invalid User please Relogin!')
                 return Response(msg)
 
-                    
+
+
+
+# user purchase order
+class OrderPurchase(APIView):
+    renderer_classes = [JSONRenderer]
+    @staticmethod
+    def get(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        order_id = request.query_params.get('order_id', None)
+
+        if order_id == None or order_id == "":
+            msg = dict(error='Missing order_id')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                if not Orders.objects.filter(order_id=order_id, created_by=userD.id).exists():
+                    msg = dict(error="Order Does not exist!")
+                    return Response(msg)
+                else:
+                    orders = Orders.objects.filter(order_id=order_id)
+                    order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
+                            'billing_id': od.billing_id.id,
+                            'delivery_type': od.delivery_type, 'category': od.category.id,
+                            'price': od.price, 'order_id': od.order_id, 'paid': od.paid, 'image': od.image,
+                            'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
+                            'delivery_status': od.delivery_status, 'top_up': od.top_up,
+                            'quantity': od.quantity, 'paid_status': od.paid_status, 'created_at': od.created_at,
+                            'created_by': od.created_by.id} for od in orders]
+                    orders2 = Orders.objects.filter(created_by=userD.id)[0]
+                    order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                                'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
+                                'rider_name': od.assigned_to.name, 'rider_phone': od.assigned_to.phone,
+                                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
+                                'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
+                    msg = dict(order=order, billing_user=order_billing)
+                    return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+
+    # purchase order
+    @staticmethod
+    def post(request):
+        claims = check_http_auth(request)
+        set = ["user", "admin", "superAdmin", "rider"]
+
+        rows = json.loads(request.body)
+        rows2 = json.loads(request.body)[0]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    res = get_random_numeric_string(10)
+                    copy_res = f"MOB{copy.copy(res)}"
+                    if Orders.objects.filter(order_id=copy_res).exists():
+                        OrderPurchase().post(request)
+                    else:
+                        for row in rows:
+                            upd = row.update({"order_id": copy_res})
+                            upd2 = row.update({"created_by": userD.id})
+                        save_list = [Orders(product_id=Product.objects.get(pk=row["product_id"]), product_name=row["product_name"],
+                            billing_id=BillingDetails.objects.get(pk=row["billing_id"]), delivery_type=row["delivery_type"],
+                            category=row["category"], price=row["price"], order_id=row["order_id"], duration=row["duration"],
+                            paid=row["paid"], reference=row["reference"], total=row["total"], delivery_fee=row["delivery_fee"],
+                            price_desc=row["price_desc"], top_up=row["top_up"], quantity=row["quantity"],
+                            created_by=auth_user.objects.get(pk=row["created_by"]),
+                        ) for row in rows]
+                        save = Orders.objects.bulk_create(save_list)
+                        find_save_data = Orders.objects.filter(order_id=copy_res)[0]
+                        save_trans = Transactions.objects.create(product_name=find_save_data.product_name,
+                            order_id=find_save_data.order_id, total=find_save_data.total, 
+                            reference=find_save_data.reference, pay_type=rows2["pay_type"].lower()).save()
+                        upd_email = AddOrderPendingEmail.objects.create(
+                            email=userD.email, order_id=copy_res, reference=find_save_data.reference).save()
+                        add_notify = Notification.objects.create(subject="Order", item_id=copy_res, 
+                            email=userD.email, body=f"{userD.name} Purchase an order with Order ID: {copy_res}", edit_by=userD, 
+                            name=userD.name).save()
+                        userD.purchase = userD.purchase + 1
+                        userD.save()
+                        pro = Orders.objects.filter(order_id=copy_res)
+                        for id in pro:
+                            updPro = Product.objects.get(pk=id.product_id.pk)
+                            updPro.purchase = int(updPro.purchase) + 1
+                            updPro.save()
+                        msg = Return_profile_details(userD)
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)

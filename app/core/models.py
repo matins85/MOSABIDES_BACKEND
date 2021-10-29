@@ -206,7 +206,7 @@ class BillingDetails(models.Model):
 
 class Notification(models.Model):
     subject = models.CharField(max_length=200, null=True, blank=True)
-    item_id = models.IntegerField(null=True, blank=True)
+    item_id = models.CharField(max_length=50, null=True, blank=True)
     name = models.CharField(max_length=200)
     email = models.EmailField(null=False, blank=False)
     body = models.TextField(null=False, blank=False)
@@ -226,13 +226,12 @@ class Notification(models.Model):
 class Orders(models.Model):
     product_name = models.CharField(max_length=200, null=False, blank=False)    
     delivery_type = models.CharField(max_length=10, choices=delivery_type, null=False, blank=False)
-    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True)
+    category = models.CharField(max_length=50, null=False, blank=False)
     price = models.FloatField(null=False, blank=False)
     order_id = models.CharField(max_length=50, null=False, blank=False)
     total = models.FloatField(null=False, blank=False)
     paid = models.BooleanField(default=False)
     delivery_fee = models.FloatField(null=False, blank=False)
-    image = models.TextField(null=False, blank=False)
     reference = models.CharField(max_length=50)
     price_desc = models.CharField(max_length=50)
     seen = models.BooleanField(default=False)

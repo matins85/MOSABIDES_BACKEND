@@ -538,18 +538,19 @@ def Return_profile_details(userD):
     # Orders
     orders = Orders.objects.filter(created_by=userD.id)
     order = [{'id': od.pk, 'product_id': od.product_id.id, 'product_name': od.product_name,
-            'duration': od.duration, 'billing_id': od.billing_id.id,
-            'delivery_type': od.delivery_type, 'category': od.category.id,
-            'price': od.price, 'order_id': od.order_id, 'delivery_fee': od.delivery_fee,
-            'total': od.total, 'paid': od.paid, 'image': od.image,
+            'billing_id': od.billing_id.id,
+            'delivery_type': od.delivery_type, 'category': od.category,
+            'price': od.price, 'order_id': od.order_id, 'paid': od.paid, 'image': od.product_id.image,
             'reference': od.reference, 'price_desc': od.price_desc, 'seen': od.seen,
-            'delivery_status': od.delivery_status, 'assigned_to': od.assigned_to.id, 'top_up': od.top_up,
-            'quantity': od.quantity, 'paid_status': od.paid_status, 'created_at': od.created_at,
+            'delivery_status': od.delivery_status, 'top_up': od.top_up, 'quantity': od.quantity, 
+            'paid_status': od.paid_status, 'created_at': od.created_at,
             'created_by': od.created_by.id} for od in orders]
     orders2 = Orders.objects.filter(created_by=userD.id)[0]
     order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                'rider_name': orders2.assigned_to.name, 'rider_phone': orders2.assigned_to.phone,
                 'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
-                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone}
+                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
+                'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
     return dict(profile=profile, billing=billing, wishlist=wishlist, 
         order=dict(order=order, billing_user=order_billing))
 
@@ -570,8 +571,7 @@ class Profile(APIView):
             return Response(msg)
         elif claims.get('error', None) != None:
             return Response(claims)
-
-        try: 
+        try:
             userD = auth_user.objects.get(pk=claims["msg"]["id"])
             if userD.role not in set:
                 msg = dict(error="Unauthorized Request")
