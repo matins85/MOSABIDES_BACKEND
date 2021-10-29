@@ -13,9 +13,16 @@ USER root
 
 RUN mkdir -p /vol/static && \
     chmod 755 /vol/static && \
+    chmod -R 755 /vol && \
     touch /etc/nginx/conf.d/default.conf && \
     chown nginx:nginx /etc/nginx/conf.d/default.conf && \
     chmod +x /run.sh
+    # chown -R app:app /vol && \
+    # RUN chmod -R 755 /vol/web && \
+    # RUN chmod -R 755 /app && \
+    # chmod -R 755 /vol && \
+    # # chmod -R +x /scripts 
+    # chmod +x /scripts/*
 
 VOLUME /vol/static
 

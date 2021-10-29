@@ -37,14 +37,14 @@ services:
     build:
       context: .
     ports:
-      - "3000:3000"
+      - "8000:8000"
     volumes:
       - ./app:/app
       - ./data/web:/vol/web
     command: >
       sh -c "python3 manage.py migrate &&
              python3 manage.py wait_for_db &&
-             python3 manage.py runserver 0.0.0.0:3000"
+             python3 manage.py runserver 0.0.0.0:8000"
     environment:
             - SECRET_KEY=RO6dzcIdOALyvuAT7PEjQQoGeu0
             - DEBUG=1

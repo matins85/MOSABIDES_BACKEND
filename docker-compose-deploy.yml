@@ -3,9 +3,9 @@ version: "3.9"
 services:
   app:
     build:
-      context: .
-      # context: ./proxy
-      # dockerfile: Dockerfile
+      # context: .
+      context: ./proxy
+      dockerfile: Dockerfile
     restart: always
     volumes:
       - static-data:/vol/web
