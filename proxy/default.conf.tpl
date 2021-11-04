@@ -1,3 +1,7 @@
+upstream api {
+    server ${APP_HOST}:${APP_PORT};
+}
+
 server {
     listen ${LISTEN_PORT};
 
@@ -6,9 +10,9 @@ server {
     }
 
     location / {
-        uwsgi_pass              ${APP_HOST}:${APP_PORT};
+        uwsgi_pass              api;
         include                 /etc/nginx/uwsgi_params;
-        client_max_body_size    75M;
+        client_max_body_size    100M;
     }
 }
 

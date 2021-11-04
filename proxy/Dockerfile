@@ -7,6 +7,7 @@ COPY ./run.sh /run.sh
 
 ENV LISTEN_PORT=8000
 ENV APP_HOST=app
+# ENV APP_HOST = 127.0.0.1
 ENV APP_PORT=9000
 
 USER root

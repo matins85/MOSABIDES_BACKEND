@@ -547,7 +547,8 @@ def Return_profile_details(userD):
             'created_by': od.created_by.id} for od in orders]
     orders2 = Orders.objects.filter(created_by=userD.id)[0]
     order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
-                'rider_name': orders2.assigned_to.name, 'rider_phone': orders2.assigned_to.phone,
+                'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
+                'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
                 'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
                 'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
                 'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}

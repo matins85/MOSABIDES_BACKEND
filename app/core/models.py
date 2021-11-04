@@ -109,10 +109,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
 
 
+
 class Category(models.Model):
     """Product category for food"""
     name = models.CharField(max_length=50, null=False, blank=False)
     created_at = models.DateTimeField(default=now)
+
+    def __str__(self):
+        return self.name
 
 
 class EmailOtp(models.Model):
@@ -122,6 +126,9 @@ class EmailOtp(models.Model):
     expT = models.CharField(max_length=50, default=one_t)
     email = models.EmailField(null=False, blank=False)
 
+    def __str__(self):
+        return self.code
+
 
 class ResetPassword(models.Model):
     code = models.CharField(max_length=10, null=False, blank=False)
@@ -129,6 +136,9 @@ class ResetPassword(models.Model):
     expd = models.BooleanField(default=False)
     expT = models.CharField(max_length=50, default=one_t, null=False, blank=False)
     email = models.EmailField(null=False, blank=False)
+
+    def __str__(self):
+        return self.code
 
 
 class Product(models.Model):
@@ -156,6 +166,9 @@ class Product(models.Model):
     duration = models.IntegerField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
+    def __str__(self):
+        return self.product_name
+
 
 class ContactUs(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
@@ -165,6 +178,9 @@ class ContactUs(models.Model):
     seen = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.email
 
 
 class SpecialOrder(models.Model):
@@ -178,12 +194,18 @@ class SpecialOrder(models.Model):
     created_at = models.DateTimeField(default=now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return self.email
+
 
 
 class Wishlist(models.Model):
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=now)
+
+    def __str__(self):
+        return self.created_by
 
 
 class Task(models.Model):
@@ -203,6 +225,9 @@ class BillingDetails(models.Model):
     apartment = models.CharField(max_length=200, null=True, blank=True)
     notes = models.CharField(max_length=255, null=True, blank=True)
 
+    def __str__(self):
+        return self.user
+
 
 class Notification(models.Model):
     subject = models.CharField(max_length=200, null=True, blank=True)
@@ -212,6 +237,9 @@ class Notification(models.Model):
     body = models.TextField(null=False, blank=False)
     created_at = models.DateTimeField(default=now)
     edit_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return self.subject
 
 
 # class Top_up(models.Model):
@@ -249,6 +277,9 @@ class Orders(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
             related_name='created_by')
 
+    def __str__(self):
+        return self.product_name
+
 
 
 class Coupon(models.Model):
@@ -260,6 +291,9 @@ class Coupon(models.Model):
     created_for = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     email = models.EmailField(null=False, blank=False)
 
+    def __str__(self):
+        return self.coupon
+
 
 class EmailMessage(models.Model):
     status = models.CharField(max_length=10, choices=email_status, default='pending')
@@ -269,11 +303,17 @@ class EmailMessage(models.Model):
     body = models.TextField(null=False, blank=False)
     created_at = models.DateTimeField(default=now)
 
+    def __str__(self):
+        return self.email
+
 
 class AddPendingEmail(models.Model):
     status = models.CharField(max_length=10, choices=email_status, default='pending')
     email = models.EmailField(null=False, blank=False)
     subject = models.CharField(max_length=200, null=False, blank=False)
+
+    def __str__(self):
+        return self.status
 
 
 class AddOrderPendingEmail(models.Model):
@@ -282,6 +322,9 @@ class AddOrderPendingEmail(models.Model):
     order_id = models.CharField(max_length=50, null=False, blank=False)
     reference = models.CharField(max_length=50, null=False, blank=False)
 
+    def __str__(self):
+        return self.status
+
 
 
 class AddPendingEmail2(models.Model):
@@ -289,6 +332,9 @@ class AddPendingEmail2(models.Model):
     subject = models.CharField(max_length=200, null=False, blank=False)
     notes = models.TextField(null=False, blank=False)
     tablename = models.CharField(max_length=50, null=False, blank=False)
+
+    def __str__(self):
+        return self.status
 
 
 class Review(models.Model):
@@ -300,6 +346,9 @@ class Review(models.Model):
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
     created_at = created_at = models.DateTimeField(default=now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.email
 
 
 class Transactions(models.Model):
@@ -314,12 +363,18 @@ class Transactions(models.Model):
     created_at = models.DateTimeField(default=now)
     status = models.CharField(max_length=10, choices=PAID)
 
+    def __str__(self):
+        return self.product_name
+
 
 class AuthToken(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.TextField(null=False, blank=False)
     access = models.BooleanField(default=False, null=False, blank=False)
     refresh = models.BooleanField(default=False, null=False, blank=False)
+
+    def __str__(self):
+        return self.created_by
 
 
 class Test(models.Model):

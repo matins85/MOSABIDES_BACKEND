@@ -70,7 +70,8 @@ def Return_profile_details(userD):
             'created_by': od.created_by.id} for od in orders]
     orders2 = Orders.objects.filter(created_by=userD.id)[0]
     order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
-                'rider_name': orders2.assigned_to.name, 'rider_phone': orders2.assigned_to.phone,
+                'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
+                'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
                 'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
                 'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
                 'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
@@ -259,7 +260,7 @@ class Billing(APIView):
                     msg = dict(error="Unauthorized Request.")
                     return Response(msg)
                 if BillingDetails.objects.filter(user=userD).exists():
-                    msg = dict(error="Cannot add more than one address")
+                    msg = dict(error="Cannot add more than one billing address")
                     return Response(msg)
                 else:
                     saveC = BillingDetails.objects.create(user=userD, address=address, apartment=apartment, notes=notes)
@@ -603,8 +604,14 @@ class OrderPurchase(APIView):
         claims = check_http_auth(request)
         set = ["user", "admin", "superAdmin", "rider"]
 
-        rows = json.loads(request.body)
-        rows2 = json.loads(request.body)[0]
+        orders = json.loads(request.body).get('orders', None)
+        billing = json.loads(request.body).get('billing', None)[0]
+        coupon = json.loads(request.body).get('coupon', None)
+
+        if billing == None or billing == "" or orders == None or orders =="":
+            msg = dict(error='Missing billing details or order details')
+
+        rows2 = json.loads(request.body).get('orders', None)[0]
 
         if claims == None:
             msg = dict(error='Authorization header not supplied.')
@@ -623,16 +630,26 @@ class OrderPurchase(APIView):
                     if Orders.objects.filter(order_id=copy_res).exists():
                         OrderPurchase().post(request)
                     else:
-                        for row in rows:
+                        billing_details = BillingDetails.objects.update_or_create(address=billing["address"], apartment=billing["apartment"],
+                                notes=billing["notes"], user=userD)
+                        billing_id = BillingDetails.objects.get(user=userD.id)
+
+                        if coupon != None:
+                            coupon_details = Coupon.objects.filter(coupon=coupon[0]["coupon"], created_for=userD.id, used=False)
+                            if coupon_details.exists():
+                                coupon_details.update(used=True)
+
+                        for row in orders:
                             upd = row.update({"order_id": copy_res})
                             upd2 = row.update({"created_by": userD.id})
+                            upd3 = row.update({"billing_id": billing_id.id})
                         save_list = [Orders(product_id=Product.objects.get(pk=row["product_id"]), product_name=row["product_name"],
                             billing_id=BillingDetails.objects.get(pk=row["billing_id"]), delivery_type=row["delivery_type"],
                             category=row["category"], price=row["price"], order_id=row["order_id"], duration=row["duration"],
                             paid=row["paid"], reference=row["reference"], total=row["total"], delivery_fee=row["delivery_fee"],
                             price_desc=row["price_desc"], top_up=row["top_up"], quantity=row["quantity"],
                             created_by=auth_user.objects.get(pk=row["created_by"]),
-                        ) for row in rows]
+                        ) for row in orders]
                         save = Orders.objects.bulk_create(save_list)
                         find_save_data = Orders.objects.filter(order_id=copy_res)[0]
                         save_trans = Transactions.objects.create(product_name=find_save_data.product_name,
@@ -643,14 +660,65 @@ class OrderPurchase(APIView):
                         add_notify = Notification.objects.create(subject="Order", item_id=copy_res, 
                             email=userD.email, body=f"{userD.name} Purchase an order with Order ID: {copy_res}", edit_by=userD, 
                             name=userD.name).save()
-                        userD.purchase = userD.purchase + 1
+                        userD.purchase = userD.purchase + len(orders)
                         userD.save()
                         pro = Orders.objects.filter(order_id=copy_res)
                         for id in pro:
-                            updPro = Product.objects.get(pk=id.product_id.pk)
-                            updPro.purchase = int(updPro.purchase) + 1
-                            updPro.save()
+                            updPro = Product.objects.filter(pk=id.product_id.pk)
+                            save_purchase = [updPro.update(purchase=int(sv.purchase) + 1) for sv in updPro]
                         msg = Return_profile_details(userD)
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+    
+    # update order
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["admin", "superAdmin"]
+
+        orders = json.loads(request.body)
+
+        if orders == None or orders == "":
+            msg = dict(error='Missing order details')
+
+        rows2 = json.loads(request.body)[0]
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    copy_res = rows2["order_id"]
+                    if not Orders.objects.filter(order_id=copy_res).exists():
+                        msg = dict(error="Does not exist!")
+                        return Response(msg)
+                    else:
+                        find_save_data = Orders.objects.filter(order_id=copy_res)[0]
+                        if int(find_save_data.total) != rows2["total"]:
+                            msg = dict(error="Food Item should Exceed Total amount")
+                            return Response(msg)
+                        else:
+                            for row in orders:
+                                save_one = Orders.objects.filter(pk=row["id"])
+                                save_two = [save_one.update(product_id=Product.objects.get(pk=row["product_id"]), product_name=row["product_name"],                                
+                                category=row["category"], price=row["price"], order_id=row["order_id"],
+                                price_desc=row["price_desc"], top_up=row["top_up"]) for pk in save_one]
+                            save_trans = Transactions.objects.filter(order_id=copy_res).update(product_name=find_save_data.product_name,
+                                total=find_save_data.total)
+                            add_notify = Notification.objects.create(subject="Order Updated", item_id=copy_res, 
+                                email=userD.email, body=f"{userD.name} Updated an order with Order ID: {copy_res}", edit_by=userD, 
+                                name=userD.name).save()
+                        msg = dict(msg="Successfully Updated")
                         return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
