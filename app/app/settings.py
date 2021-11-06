@@ -105,6 +105,7 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASS'),
+        'CONN_MAX_AGE ': None,
     }
 }
 

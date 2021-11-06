@@ -39,8 +39,9 @@ from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthTo
     Wishlist, BillingDetails, Orders, AddPendingEmail
 from rest_framework import permissions
 
-# special order resize size 
-    # profile = 300,  special_order = 600
+
+profile_image_size = 300
+product_image_size = 600
 
 now = datetime.now()
 # jwt secret key
@@ -261,7 +262,7 @@ class Register(APIView):
         image = json.loads(request.body).get('image', None)
 
         if phone['msg'] == "error":
-            msg = dict(msg="Invalid Phone number")
+            msg = dict(error="Invalid Phone number")
             return Response(msg)
 
         if email == None or email == "" or name == None or name == "" or password == None or password == "" \
@@ -291,7 +292,7 @@ class Register(APIView):
 
                     regis = auth_user.objects.create(email=email, password=make_password(password),
                         pass_id=copy_hash, phone=phone['msg'], name=name,
-                        last_login=now, image=ResizeImage(image, 300) if image != "" else None)
+                        last_login=now, image=ResizeImage(image, profile_image_size) if image != "" else None)
                     regis.save()
                     if regis:
                         add_notify = Notification.objects.create(subject="registration", item_id=regis.id, email=email, 
@@ -610,7 +611,7 @@ class Profile(APIView):
                 image = json.loads(request.body).get('image', None)
 
                 if phone['msg'] == "error":
-                    msg = dict(msg="Invalid Phone number")
+                    msg = dict(error="Invalid Phone number")
                     return Response(msg)
 
                 if email == None or email == "" or name == None or name == "" or phone == None or phone == "":
@@ -618,7 +619,7 @@ class Profile(APIView):
                     return Response(msg)
 
                 regis = auth_user.objects.filter(pk=userD.pk).update(email=email, phone=phone['msg'], name=name,
-                        image=ResizeImage(image, 300) if image != "" else userD.image)
+                        image=ResizeImage(image, profile_image_size) if image != "" else userD.image, updated_by=userD.id)
                 userD = auth_user.objects.get(pk=userD.pk)
                 msg = Return_profile_details(userD)
                 return Response(msg)
@@ -745,7 +746,7 @@ class ChangePassword(APIView):
                 decrypt = decrypt_password(userD.pass_id)
                 copy_decrypt = copy.copy(decrypt) 
                 if not copy_decrypt == old:
-                    msg = dict(msg="Invalid password")
+                    msg = dict(error="Invalid password")
                     return Response(msg)
                 else:
                     hash = hash_password(new)
@@ -814,13 +815,11 @@ class VerifyPassword(APIView):
                 verify_otp2 = EmailOtp.objects.get(code=otp, email=email, used=True)
                 hash = hash_password(password)
                 copy_hash = copy.copy(hash)
-                save_email = AddPendingEmail.objects.create(status="pending", email=check_if_register.email, subject="reset_password")
+                save_email = AddPendingEmail.objects.create(status="pending", email=check_if_register.email, subject="reset_password").save()
                 add_notify = Notification.objects.create(subject="Reset-password", item_id=check_if_register.pk,
                     email=check_if_register.email, body=f"{check_if_register.name} Reset his/her password",
-                    edit_by=check_if_register, name=check_if_register.name)
+                    edit_by=check_if_register, name=check_if_register.name).save()
                 regis = auth_user.objects.filter(pk=check_if_register.pk).update(pass_id=copy_hash)
-                save_email.save()
-                add_notify.save()
                 verify_otp2.delete()
                 msg = dict(msg="success")
                 return Response(msg)

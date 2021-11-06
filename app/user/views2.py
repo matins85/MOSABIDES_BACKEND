@@ -215,7 +215,7 @@ class AddWishlist(APIView):
                     return Response(msg)
                 else:
                     if Wishlist.objects.filter(product_id=product_id, created_by=userD.id).exists():
-                        msg = dict(msg='Already exists')
+                        msg = dict(error='Already exists')
                         return Response(msg)
                     else:
                         saveC = Wishlist.objects.create(product_id=Product.objects.get(pk=product_id), created_by=userD)
@@ -224,7 +224,7 @@ class AddWishlist(APIView):
                             msg = Return_profile_details(userD)
                             return Response(msg)
                         else:
-                            msg = dict(msg='Cannot save to wishlist')
+                            msg = dict(error='Cannot save to wishlist')
                             return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
@@ -269,7 +269,7 @@ class Billing(APIView):
                         msg = dict(msg=saveC.id)
                         return Response(msg)
                     else:
-                        msg = dict(msg='Cannot save Address details')
+                        msg = dict(error='Cannot save Address details')
                         return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
@@ -376,13 +376,13 @@ class AddRewview(APIView):
                                 rating5=int(rating.rating1)+1, rating=rnd)
                             msg = dict(msg="success")
                         else:
-                            msg = dict(msg="Invalid rating, rating should be between 1-5!")
+                            msg = dict(error="Invalid rating, rating should be between 1-5!")
                         return Response(msg)
                     else:
-                        msg = dict(msg="Already exist!")
+                        msg = dict(error="Already exist!")
                         return Response(msg)
                 else:
-                    msg = dict(msg="Cannot add your review because you've not purchased this Food!")
+                    msg = dict(error="Cannot add your review because you've not purchased this Food!")
                     return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
@@ -428,7 +428,7 @@ class Update_delete(APIView):
                             msg = dict(msg="Successfully Deleted!")
                             return Response(msg)
                         else:
-                            msg = dict(msg="Does not exist!")
+                            msg = dict(error="Does not exist!")
                             return Response(msg)
                     elif tablename == "reviews":
                         if Review.objects.filter(pk=id, created_by=userD.id).exists():
@@ -436,7 +436,7 @@ class Update_delete(APIView):
                             msg = dict(msg="Successfully Deleted!")
                             return Response(msg)
                         else:
-                            msg = dict(msg="Does not exist!")
+                            msg = dict(error="Does not exist!")
                             return Response(msg)
                     elif tablename == "wishlist":
                         if Wishlist.objects.filter(pk=id, created_by=userD.id).exists():
@@ -444,7 +444,7 @@ class Update_delete(APIView):
                             msg = dict(msg="Successfully Deleted!")
                             return Response(msg)
                         else:
-                            msg = dict(msg="Does not exist!")
+                            msg = dict(error="Does not exist!")
                             return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
@@ -492,7 +492,7 @@ class Update_delete(APIView):
                             msg = dict(msg="Successfully Updated!")
                             return Response(msg)
                         else:
-                            msg = dict(msg="Does not exist!")
+                            msg = dict(error="Does not exist!")
                             return Response(msg)
                     elif tablename == "reviews":
                         if Review.objects.filter(pk=id, created_by=userD.id).exists():
@@ -536,10 +536,10 @@ class Update_delete(APIView):
                                     rating5=int(rating.rating1)+1, rating=rnd)
                                 msg = dict(msg="Successfully Updated!")
                             else:
-                                msg = dict(msg="Invalid rating number, rating should be between 1-5!")
+                                msg = dict(error="Invalid rating number, rating should be between 1-5!")
                             return Response(msg)
                         else:
-                            msg = dict(msg="Does not exist!")
+                            msg = dict(error="Does not exist!")
                             return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')

@@ -29,7 +29,8 @@ from user.views import check_http_auth,  check_http_auth2, ValidatePhone, Resize
 
 auth_user = get_user_model()
 
-
+profile_image_size = 300
+product_image_size = 600
 
 
 
@@ -183,159 +184,182 @@ class AddRider(APIView):
                 return Response(msg)
 
 
+
+
 # update and delete functions
-# class Update_delete(APIView):
-#     renderer_classes = [JSONRenderer]
-#     # delete item function
-#     @staticmethod
-#     def delete(request):
-#         claims = check_http_auth(request)
-#         set = ["user", "admin", "superAdmin", "rider"]
+class Update_delete(APIView):
+    renderer_classes = [JSONRenderer]
+    # delete item function
+    @staticmethod
+    def delete(request):
+        claims = check_http_auth(request)
+        set = ["admin", "superAdmin"]
 
-#         id = request.query_params.get('id', None)
-#         tablename = request.query_params.get('tablename', None)
+        id = request.query_params.get('id', None)
+        tablename = request.query_params.get('tablename', None)
 
-#         if id == None or id == "" or tablename == None or tablename == "":
-#             msg = dict(error='Missing ID or tablename')
-#             return Response(msg)
-#         if claims == None:
-#             msg = dict(error='Authorization header not supplied.')
-#             return Response(msg)
-#         elif claims.get('error', None) != None:
-#             return Response(claims)
-#         else:
-#             try:
-#                 userD = auth_user.objects.get(pk=claims["msg"]["id"])
-#                 if userD.role not in set:
-#                     msg = dict(error="Unauthorized Request.")
-#                     return Response(msg)
-#                 tablenames = ["reviews", "billing", "wishlist"]
-#                 if tablename not in tablenames:
-#                     msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
-#                     return Response(msg)
-#                 else:
-#                     if tablename == 'billing':
-#                         if BillingDetails.objects.filter(pk=id, user=userD.id).exists():
-#                             delete_item = BillingDetails.objects.get(pk=id, user=userD.id).delete()
-#                             msg = dict(msg="Successfully Deleted!")
-#                             return Response(msg)
-#                         else:
-#                             msg = dict(msg="Does not exist!")
-#                             return Response(msg)
-#                     elif tablename == "reviews":
-#                         if Review.objects.filter(pk=id, created_by=userD.id).exists():
-#                             delete_item = Review.objects.get(pk=id, created_by=userD.id).delete()
-#                             msg = dict(msg="Successfully Deleted!")
-#                             return Response(msg)
-#                         else:
-#                             msg = dict(msg="Does not exist!")
-#                             return Response(msg)
-#                     elif tablename == "wishlist":
-#                         if Wishlist.objects.filter(pk=id, created_by=userD.id).exists():
-#                             delete_item = Wishlist.objects.get(pk=id, created_by=userD.id).delete()
-#                             msg = dict(msg="Successfully Deleted!")
-#                             return Response(msg)
-#                         else:
-#                             msg = dict(msg="Does not exist!")
-#                             return Response(msg)
-#             except auth_user.DoesNotExist:
-#                 msg = dict(error='Invalid User please Relogin!')
-#                 return Response(msg)
+        if id == None or id == "" or tablename == None or tablename == "":
+            msg = dict(error='Missing ID or tablename')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                tablenames = ["reviews", "coupon", "product", "special_order", "contact_us", ]
+                if tablename not in tablenames:
+                    msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
+                    return Response(msg)
+                else:
+                    if tablename == 'contact_us':
+                        if ContactUs.objects.filter(pk=id).exists():
+                            delete_item = ContactUs.objects.get(pk=id).delete()
+                            msg = dict(msg="Successfully Deleted!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == "reviews":
+                        if Review.objects.filter(pk=id).exists():
+                            delete_item = Review.objects.get(pk=id).delete()
+                            msg = dict(msg="Successfully Deleted!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == "special_order":
+                        if SpecialOrder.objects.filter(pk=id).exists():
+                            delete_item = SpecialOrder.objects.get(pk=id).delete()
+                            msg = dict(msg="Successfully Deleted!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == "product":
+                        if Product.objects.filter(pk=id).exists():
+                            delete_item = Product.objects.get(pk=id).delete()
+                            msg = dict(msg="Successfully Deleted!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == "coupon":
+                        if Coupon.objects.filter(pk=id).exists():
+                            delete_item = Coupon.objects.get(pk=id).delete()
+                            msg = dict(msg="Successfully Deleted!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
 
 
-#     # update item function
-#     @staticmethod
-#     def put(request):
-#         claims = check_http_auth(request)
-#         set = ["user", "admin", "superAdmin", "rider"]
+    # update item function
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["admin", "superAdmin"]
 
-#         id = request.query_params.get('id', None)
-#         tablename = request.query_params.get('tablename', None)
+        id = request.query_params.get('id', None)
+        tablename = request.query_params.get('tablename', None)
 
-#         if id == None or id == "" or tablename == None or tablename == "":
-#             msg = dict(error='Missing ID or tablename')
-#             return Response(msg)
-#         if claims == None:
-#             msg = dict(error='Authorization header not supplied.')
-#             return Response(msg)
-#         elif claims.get('error', None) != None:
-#             return Response(claims)
-#         else:
-#             try:
-#                 userD = auth_user.objects.get(pk=claims["msg"]["id"])
-#                 if userD.role not in set:
-#                     msg = dict(error="Unauthorized Request.")
-#                     return Response(msg)
-#                 tablenames = ["reviews", "billing"]
-#                 if tablename not in tablenames:
-#                     msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
-#                     return Response(msg)
-#                 else:
-#                     if tablename == 'billing':
-#                         if BillingDetails.objects.filter(pk=id, user=userD.id).exists():
-#                             address = json.loads(request.body).get('address', None)
-#                             apartment = json.loads(request.body).get('apartment', None)
-#                             notes = json.loads(request.body).get('notes', None)
-#                             if address == None or address == "":
-#                                 msg = dict(error='Missing ID or Address')
-#                                 return Response(msg)
-#                             BillingDetails.objects.filter(pk=id, user=userD.id).update(address=address,
-#                                 apartment=apartment, notes=notes)
-#                             msg = dict(msg="Successfully Updated!")
-#                             return Response(msg)
-#                         else:
-#                             msg = dict(msg="Does not exist!")
-#                             return Response(msg)
-#                     elif tablename == "reviews":
-#                         if Review.objects.filter(pk=id, created_by=userD.id).exists():
-#                             rating_pro = json.loads(request.body).get('rating', None)
-#                             description = json.loads(request.body).get('description', None)
-#                             if rating_pro == None or rating_pro == "" or description == None \
-#                                 or description == "":
-#                                 msg = dict(error='Missing ID or rating or description')
-#                                 return Response(msg)
-#                             upd = Review.objects.filter(pk=id, created_by=userD.id).update(rating=rating_pro,
-#                                 description=description)
-#                             get_review = Review.objects.get(pk=upd)
-#                             rating = Product.objects.get(pk=get_review.product_id.id)
-#                             if rating_pro == 5:
-#                                 rnd = round( (5*int(rating.rating5 + 1) + 4*int(rating.rating4)+ 3*int(rating.rating3) + 2*int(rating.rating2) + 1*int(rating.rating1)) / (int(rating.rating1) + int(rating.rating2)+ int(rating.rating3) + int(rating.rating4) + int(rating.rating5 + 1)), 1)
-#                                 upd2 = Product.objects.filter(pk=rating.id).update(
-#                                     rating5=int(rating.rating5)+1, rating=rnd)
-#                                 msg = dict(msg="Successfully Updated!")
-
-#                             elif rating_pro == 4:
-#                                 rnd = round( (5*int(rating.rating5) + 4*int(rating.rating4 + 1)+ 3*int(rating.rating3) + 2*int(rating.rating2) + 1*int(rating.rating1)) / (int(rating.rating1) + int(rating.rating2)+ int(rating.rating3) + int(rating.rating4 + 1) + int(rating.rating5)), 1)
-#                                 upd2 = Product.objects.filter(pk=rating.id).update(
-#                                     rating5=int(rating.rating4)+1, rating=rnd)
-#                                 msg = dict(msg="Successfully Updated!")
-
-#                             elif rating_pro == 3:
-#                                 rnd = round( (5*int(rating.rating5) + 4*int(rating.rating4)+ 3*int(rating.rating3 + 1) + 2*int(rating.rating2) + 1*int(rating.rating1)) / (int(rating.rating1) + int(rating.rating2)+ int(rating.rating3 + 1) + int(rating.rating4) + int(rating.rating5)), 1)
-#                                 upd2 = Product.objects.filter(pk=rating.id).update(
-#                                     rating5=int(rating.rating3)+1, rating=rnd)
-#                                 msg = dict(msg="Successfully Updated!")
-                            
-#                             elif rating_pro == 2:
-#                                 rnd = round( (5*int(rating.rating5) + 4*int(rating.rating4)+ 3*int(rating.rating3) + 2*int(rating.rating2 + 1) + 1*int(rating.rating1)) / (int(rating.rating1) + int(rating.rating2 + 1)+ int(rating.rating3) + int(rating.rating4) + int(rating.rating5)), 1)
-#                                 upd2 = Product.objects.filter(pk=rating.id).update(
-#                                     rating5=int(rating.rating2)+1, rating=rnd)
-#                                 msg = dict(msg="Successfully Updated!")
-                            
-#                             elif rating_pro == 1:
-#                                 rnd = round( (5*int(rating.rating5) + 4*int(rating.rating4)+ 3*int(rating.rating3) + 2*int(rating.rating2) + 1*int(rating.rating1 + 1)) / (int(rating.rating1 + 1) + int(rating.rating2)+ int(rating.rating3) + int(rating.rating4) + int(rating.rating5)), 1)
-#                                 upd2 = Product.objects.filter(pk=rating.id).update(
-#                                     rating5=int(rating.rating1)+1, rating=rnd)
-#                                 msg = dict(msg="Successfully Updated!")
-#                             else:
-#                                 msg = dict(msg="Invalid rating number, rating should be between 1-5!")
-#                             return Response(msg)
-#                         else:
-#                             msg = dict(msg="Does not exist!")
-#                             return Response(msg)
-#             except auth_user.DoesNotExist:
-#                 msg = dict(error='Invalid User please Relogin!')
-#                 return Response(msg)
+        if id == None or id == "" or tablename == None or tablename == "":
+            msg = dict(error='Missing ID or tablename')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                tablenames = ["product", "user", "coupon"]
+                if tablename not in tablenames:
+                    msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
+                    return Response(msg)
+                else:
+                    if tablename == 'product':
+                        if Product.objects.filter(pk=id).exists():
+                            product_name = json.loads(request.body).get('product_name', None)
+                            category = json.loads(request.body).get('category', None)
+                            description = json.loads(request.body).get('description', None)
+                            discount = json.loads(request.body).get('discount', None)
+                            image = json.loads(request.body).get('image', None)
+                            sPrice = json.loads(request.body).get('sPrice', None)
+                            mPrice = json.loads(request.body).get('mPrice', None)
+                            lPrice = json.loads(request.body).get('lPrice', None)
+                            sPrice_desc = json.loads(request.body).get('sPrice_desc', None)
+                            mPrice_desc = json.loads(request.body).get('mPrice_desc', None)
+                            lPrice_desc = json.loads(request.body).get('lPrice_desc', None)
+                            duration = json.loads(request.body).get('duration', None)
+                            if product_name == None or product_name == "" or category == None or category == "" \
+                                or description == None or description == "" or discount == None or discount == "" \
+                                or duration == None or duration == "":
+                                msg = dict(error='Missing product_name or category or description or discount or duration')
+                                return Response(msg)
+                            get_product = Product.objects.get(pk=id)
+                            Product.objects.filter(pk=id).update(product_name=product_name, mPrice=mPrice, lPrice=lPrice, discount=discount,
+                                category=category, description=description, sPrice=sPrice, sPrice_desc=sPrice_desc, mPrice_desc=mPrice_desc,
+                                lPrice_desc=lPrice_desc, duration=duration, image=ResizeImage(image, product_image_size) if image != "" else get_product.image)
+                            Notification.objects.create(subject="Update product", item_id=get_product.pk,
+                                email=userD.email, body=f"{userD.name} Updated a product",
+                                edit_by=userD, name=userD.name).save()
+                            msg = dict(msg="Successfully Updated!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == 'coupon':
+                        if Coupon.objects.filter(pk=id).exists():
+                            discount = json.loads(request.body).get('discount', None)
+                            if discount == None or discount == "" or discount < 2:
+                                msg = dict(error='Missing discount or invalid discount number')
+                                return Response(msg)
+                            Coupon.objects.filter(pk=id).update(discount=discount)
+                            Notification.objects.create(subject="Coupon updated", item_id=id,
+                                email=userD.email, body=f"{userD.name} Updated a Coupon",
+                                edit_by=userD, name=userD.name).save()
+                            msg = dict(msg="Successfully Updated!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    elif tablename == 'user':
+                        if auth_user.objects.filter(pk=id).exists():
+                            email = json.loads(request.body).get('email', None)
+                            phone = ValidatePhone(json.loads(request.body).get('phone', None))
+                            name = json.loads(request.body).get('name', None)
+                            subscribe_news = json.loads(request.body).get('subscribe_news', None)
+                            if email == None or email == "" or phone == None or phone == "" or name == None or name == "" \
+                                or subscribe_news == None or subscribe_news == "":
+                                msg = dict(error='Missing email or phone or name or subscribe_news')
+                                return Response(msg)
+                            auth_user.objects.filter(pk=id).update(email=email, phone=phone['msg'], name=name, subscribe_news=subscribe_news,
+                                    updated_by=userD.id)
+                            Notification.objects.create(subject="Customer updated", item_id=id,
+                                email=userD.email, body=f"{userD.name} Updated a Customer",
+                                edit_by=userD, name=userD.name).save()
+                            msg = dict(msg="Successfully Updated!")
+                            return Response(msg)
+                        else:
+                            msg = dict(error="Does not exist!")
+                            return Response(msg)
+                    
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
 
 
 

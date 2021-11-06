@@ -35,6 +35,7 @@ class UserAdmin(BaseUserAdmin):
         'disabled_by', 'password', 'updated_by', 'created_at', 'pass_id', 'seen',)
         }),
     )
+    list_display_links= ['email',]
 
 
 class ProductAdmin(admin.ModelAdmin):
@@ -42,12 +43,13 @@ class ProductAdmin(admin.ModelAdmin):
         queryset.update(category="default")
 
     ordering = ['id']
-    list_display = ['product_name', 'category', 'rating', 'price', 'discount',]
-    search_fields = ['product_name', 'id', 'category']
+    list_display = ['id', 'product_name', 'category', 'rating', 'price', 'discount',]
+    search_fields = ['product_name', 'id', 'category',]
     actions = ['change_category_to_default',]
     list_editable = ['discount','rating',]
     list_filter = ['category', 'rating',]
     list_per_page = 50
+    list_display_links= ['product_name',]
 
 
 class NotificationAdmin(admin.ModelAdmin):
