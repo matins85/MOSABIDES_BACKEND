@@ -66,7 +66,6 @@ class UserManager(BaseUserManager):
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-
         return user
 
     def create_superuser(self, email, password):
@@ -74,7 +73,6 @@ class UserManager(BaseUserManager):
         user = self.create_user(email, password)
         user.is_staff = True
         user.save(using=self._db)
-
         return user
 
 
@@ -205,7 +203,7 @@ class Wishlist(models.Model):
     created_at = models.DateTimeField(default=now)
 
     def __str__(self):
-        return self.created_by
+        return str(self.created_by)
 
 
 class Task(models.Model):
@@ -217,6 +215,9 @@ class Task(models.Model):
     seen = models.BooleanField(default=False)
     description = models.TextField(null=False, blank=False)
 
+    def __str__(self):
+        return str(self.created_by)
+
 
 class BillingDetails(models.Model):
     """Billing details used for food delivery"""
@@ -226,7 +227,7 @@ class BillingDetails(models.Model):
     notes = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return self.user
+        return str(self.user)
 
 
 class Notification(models.Model):
@@ -236,6 +237,7 @@ class Notification(models.Model):
     email = models.EmailField(null=False, blank=False)
     body = models.TextField(null=False, blank=False)
     created_at = models.DateTimeField(default=now)
+    seen = models.BooleanField(default=False)
     edit_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
@@ -278,7 +280,7 @@ class Orders(models.Model):
             related_name='created_by')
 
     def __str__(self):
-        return self.product_name
+        return str(self.product_name)
 
 
 
@@ -342,7 +344,6 @@ class Review(models.Model):
     description = models.TextField(null=False, blank=False)
     name = models.CharField(max_length=200)
     email = models.EmailField(null=False, blank=False)
-    seen = models.BooleanField(default=False)
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
     created_at = created_at = models.DateTimeField(default=now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -374,7 +375,7 @@ class AuthToken(models.Model):
     refresh = models.BooleanField(default=False, null=False, blank=False)
 
     def __str__(self):
-        return self.created_by
+        return str(self.created_by)
 
 
 class Test(models.Model):

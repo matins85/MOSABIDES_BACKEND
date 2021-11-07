@@ -58,6 +58,14 @@ class NotificationAdmin(admin.ModelAdmin):
     list_filter = ['subject',]
     list_per_page = 50
 
+class OrderAdmin(admin.ModelAdmin):
+    ordering = ['id']
+    search_fields = ['product_name', 'id', 'order_id',]
+    list_filter = ['product_name',]
+    list_per_page = 50
+    # list_display_links= ['product_name',]
+
+
 
 admin.site.unregister(Group)
 admin.site.register(models.User, UserAdmin)
@@ -66,7 +74,7 @@ admin.site.register(models.ContactUs)
 admin.site.register(models.EmailMessage)
 admin.site.register(models.EmailOtp)
 admin.site.register(models.Notification, NotificationAdmin)
-admin.site.register(models.Orders)
+admin.site.register(models.Orders, OrderAdmin)
 admin.site.register(models.Product, ProductAdmin)
 admin.site.register(models.ResetPassword)
 admin.site.register(models.Review)

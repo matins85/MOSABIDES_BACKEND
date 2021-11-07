@@ -559,4 +559,129 @@ class ALL_ITEM(APIView):
                             return Response(msg)
                     except auth_user.DoesNotExist:
                         msg = dict(error="Unauthorized Request.")
-                        return R
+                        return Response(msg)
+
+
+
+# enable and disable user class
+class AdminEnaDisUser(APIView):
+    renderer_classes = [JSONRenderer]
+    # enable and disable user function
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["superAdmin", "admin"]
+
+        id = request.query_params.get('id', None)
+        user_type = request.query_params.get('type', None)
+
+        if id == None or id == "" or user_type == None or user_type == "":
+            msg = dict(error='Missing user type or ID')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                if user_type == "disable":
+                    if (userD.role == "admin") and (auth_user.objects.filter(pk=id, role="superAdmin", is_staff=True).exists()):
+                        msg = dict(error="Cannot disable SuperAdmin!")
+                        return Response(msg)
+                    elif (userD.role == "admin") and (auth_user.objects.filter(Q(pk=id) & Q(role="admin") & Q(is_staff=True)).exists()):
+                        msg = dict(error="Cannot disable another Admin!")
+                        return Response(msg)
+                    elif (userD.role == "superAdmin") and (auth_user.objects.filter(pk=id, role="superAdmin", is_staff=True).exists()):
+                        msg = dict(error="Cannot disable SuperAdmin!")
+                        return Response(msg)
+                    elif (userD.role == "superAdmin") and (auth_user.objects.filter(Q(pk=id) & Q(role="admin") & Q(is_staff=True) & Q(disabled=False)).exists()):
+                        auth_user.objects.filter(pk=id).update(disabled=True, disabled_by=userD.id)
+                        Notification.objects.create(subject="Account Disabled", item_id=id, email=userD.email, 
+                            body=f"{userD.name} Disabled an Account", edit_by=userD, name=userD.name).save()
+                        msg = dict(msg="Success")
+                        return Response(msg)
+                    elif (userD.role == "superAdmin") and (auth_user.objects.filter(Q(pk=id) & Q(role="user") & Q(is_staff=False) & Q(disabled=False)).exists()):
+                        auth_user.objects.filter(pk=id).update(disabled=True, disabled_by=userD.id)
+                        Notification.objects.create(subject="Account Disabled", item_id=id, email=userD.email, 
+                            body=f"{userD.name} Disabled an Account", edit_by=userD, name=userD.name).save()
+                        msg = dict(msg="Success")
+                        return Response(msg)
+                    elif (userD.role == "admin") and (auth_user.objects.filter(Q(pk=id) & Q(role="user") & Q(is_staff=False) & Q(disabled=False)).exists()):
+                        auth_user.objects.filter(pk=id).update(disabled=True, disabled_by=userD.id)
+                        Notification.objects.create(subject="Account Disabled", item_id=id, email=userD.email, 
+                            body=f"{userD.name} Disabled an Account", edit_by=userD, name=userD.name).save()
+                        msg = dict(msg="Success")
+                        return Response(msg)
+                    else:
+                        msg = dict(msg="Already Disabled")
+                        return Response(msg)
+                elif user_type == "enable":
+                    auth_user.objects.filter(pk=id).update(disabled=False, disabled_by=None)
+                    Notification.objects.create(subject="Account Enabled", item_id=id, email=userD.email, 
+                            body=f"{userD.name} Enabled an Account", edit_by=userD, name=userD.name).save()
+                    msg = dict(msg="Success")
+                    return Response(msg)
+                else:
+                    msg = dict(error='Invalid Type, should be either enable or disable')
+                    return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+
+
+# update seen class
+class Viewed(APIView):
+    renderer_classes = [JSONRenderer]
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        set = ["superAdmin", "admin"]
+
+        id = request.query_params.get('id', None)
+        tablename = request.query_params.get('tablename', None)
+
+        if id == None or id == "" or tablename == None or tablename == "":
+            msg = dict(error='Missing tablename or ID')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                tablenames = ["product", "user", "contact_us", "special_order", "order_purchase", "task", "coupon"]
+                if tablename not in tablenames:
+                    msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
+                    return Response(msg)
+                else:
+                    if tablename == "product":
+                        Product.objects.filter(pk=id).update(seen=True)
+                    elif tablename == "user":
+                        auth_user.objects.filter(pk=id).update(seen=True)
+                    elif tablename == "contact_us":
+                        ContactUs.objects.filter(pk=id).update(seen=True)
+                    elif tablename == "special_order":
+                        SpecialOrder.objects.filter(pk=id).update(seen=True)
+                    elif tablename == "order_purchase":
+                        Orders.objects.filter(order_id=id).update(seen=True)
+                    elif tablename == "task":
+                        Task.objects.filter(pk=id).update(seen=True)
+                    elif tablename == "coupon":
+                        Coupon.objects.filter(pk=id).update(seen=True)
+                    return Response({"msg": "success"})
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+                
