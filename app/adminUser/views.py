@@ -25,7 +25,8 @@ import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, Task, \
     Wishlist, BillingDetails, Orders, AddPendingEmail, SpecialOrder, Coupon, Review, Transactions
-from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage
+from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage, send_email, \
+    get_random_alphanumeric_string
 
 auth_user = get_user_model()
 
@@ -684,4 +685,123 @@ class Viewed(APIView):
                 msg = dict(error='Invalid User please Relogin!')
                 return Response(msg)
 
-                
+
+# special order class
+# class AddspecialOrder(APIView):
+#     renderer_classes = [JSONRenderer]
+#     @staticmethod
+#     def post(request):
+#         claims = check_http_auth(request)
+#         set = ["superAdmin", "admin"]
+
+#         id = request.query_params.get('id', None)
+#         orders = json.loads(request.body)
+
+#         if orders == None or orders == "" or id == None or id == "":
+#             msg = dict(error='Missing order details or ID')
+#             return Response(msg)
+#         if claims == None:
+#             msg = dict(error='Authorization header not supplied.')
+#             return Response(msg)
+#         elif claims.get('error', None) != None:
+#             return Response(claims)
+#         else:
+#             try:
+#                 userD = auth_user.objects.get(pk=claims["msg"]["id"])
+#                 if userD.role not in set:
+#                     msg = dict(error="Unauthorized Request.")
+#                     return Response(msg)
+#                 else:
+#                     if auth_user.objects.filter(pk=id).exists():
+#                         res = get_random_numeric_string(10)
+#                         copy_res = f"MOB{copy.copy(res)}"
+#                         if Orders.objects.filter(order_id=copy_res).exists():
+#                             OrderPurchase().post(request)
+#                         else:
+#                             rows2 = json.loads(request.body)[0]
+#                             customer = auth_user.objects.get(pk=id)
+
+#                             for row in orders:
+#                                 upd = row.update({"order_id": copy_res})
+#                                 upd2 = row.update({"created_by": customer.id})
+#                                 upd3 = row.update({"billing_id": billing_id.id})
+#                             save_list = [Orders(product_id=Product.objects.get(pk=row["product_id"]), product_name=row["product_name"],
+#                                 billing_id=BillingDetails.objects.get(pk=row["billing_id"]), delivery_type=row["delivery_type"],
+#                                 category=row["category"], price=row["price"], order_id=row["order_id"], duration=row["duration"],
+#                                 paid=row["paid"], reference=row["reference"], total=row["total"], delivery_fee=row["delivery_fee"],
+#                                 price_desc=row["price_desc"], top_up=row["top_up"], quantity=row["quantity"],
+#                                 created_by=customer,
+#                             ) for row in orders]
+#                             save = Orders.objects.bulk_create(save_list)
+#                             find_save_data = Orders.objects.filter(order_id=copy_res)[0]
+#                             # save_trans = Transactions.objects.create(product_name=find_save_data.product_name,
+#                             #     order_id=find_save_data.order_id, total=find_save_data.total, 
+#                             #     reference=find_save_data.reference, pay_type=rows2["pay_type"].lower()).save()
+#                             upd_email = AddOrderPendingEmail.objects.create(
+#                                 email=userD.email, order_id=copy_res, reference=find_save_data.reference).save()
+#                             # add_notify = Notification.objects.create(subject="Order", item_id=copy_res, 
+#                             #     email=userD.email, body=f"{userD.name} Purchase an order with Order ID: {copy_res}", edit_by=userD, 
+#                             #     name=userD.name).save()
+#                             # userD.purchase = userD.purchase + len(orders)
+#                             # userD.save()
+#                             # pro = Orders.objects.filter(order_id=copy_res)
+#                             # for id in pro:
+#                             #     updPro = Product.objects.filter(pk=id.product_id.pk)
+#                             #     save_purchase = [updPro.update(purchase=int(sv.purchase) + 1) for sv in updPro]
+#                             # msg = Return_profile_details(userD)
+#                             return Response(msg)
+#                     else:
+#                         msg = dict(error='Invalid Customer!')
+#                         return Response(msg)
+#             except auth_user.DoesNotExist:
+#                 msg = dict(error='Invalid User please Relogin!')
+#                 return Response(msg)
+
+
+
+# special order class
+class GenerateCoupon(APIView):
+    renderer_classes = [JSONRenderer]
+    @staticmethod
+    def post(request):
+        claims = check_http_auth(request)
+        set = ["superAdmin", "admin"]
+
+        id = request.query_params.get('id', None)
+        discount = request.query_params.get('discount', None)
+
+        if discount == None or discount == "" or id == None or id == "":
+            msg = dict(error='Missing discount or ID')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    if not Coupon.objects.filter(created_for=id, used=False).exists():
+                        coupon = get_random_alphanumeric_string(10)
+                        copy_coup = copy.copy(coupon)
+                        user = auth_user.objects.get(pk=id)
+                        context = dict(coupon=copy_coup, type="generate", discount=discount)
+                        sendcode2 = send_email(user.email, 'Congratulations', 'coupon', context)
+                        if sendcode2["msg"] == "success":
+                            save = Coupon.objects.create(coupon=copy_coup, discount=discount, 
+                            email=user.email, created_for=user).save()
+                            msg = dict(msg="success")
+                            return Response(msg)
+                        else:
+                            msg = dict(error='An error occur, please try again!')
+                            return Response(msg)
+                    else:
+                        msg = dict(error="Cannot Gift coupon because this user has not used the previous one")
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)

@@ -1,7 +1,6 @@
 Django>=3.2.3,<3.3
 djangorestframework>=3.12.4,<3.13.0
 django-smtp-ssl==1.0
-# psycopg2>=2.7.5,<2.8.0
 psycopg2-binary==2.9.1
 celery==4.4.1
 redis==3.4.1

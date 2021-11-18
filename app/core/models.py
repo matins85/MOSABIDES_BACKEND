@@ -284,6 +284,34 @@ class Orders(models.Model):
 
 
 
+# class Orders(models.Model):
+#     product_name = models.CharField(max_length=200, null=False, blank=False)    
+#     delivery_type = models.CharField(max_length=10, choices=delivery_type, null=False, blank=False)
+#     category = models.CharField(max_length=50, null=False, blank=False)
+#     price = models.FloatField(null=False, blank=False)
+#     order_id = models.CharField(max_length=50, null=False, blank=False)
+#     total = models.FloatField(null=False, blank=False)
+#     paid = models.BooleanField(default=False)
+#     delivery_fee = models.FloatField(null=False, blank=False)
+#     price_desc = models.CharField(max_length=50)
+#     duration = models.IntegerField(null=False, blank=False)
+#     product_id = models.ForeignKey('Product', on_delete=models.CASCADE, null=True)
+#     billing_id = models.ForeignKey('BillingDetails', on_delete=models.SET_NULL, null=True)
+#     delivery_status = models.CharField(max_length=20, choices=DELV, default='process')
+#     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+#             null=True, related_name='assigned_to')
+#     top_up = JSONField(null=False, blank=False)
+#     quantity = models.IntegerField(null=False, blank=False)
+#     paid_status = models.CharField(max_length=10, choices=PAID, default='pending')
+#     created_at = models.DateTimeField(default=now)
+#     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
+#             related_name='created_by')
+
+#     def __str__(self):
+#         return str(self.product_name)
+
+
+
 class Coupon(models.Model):
     coupon = models.CharField(max_length=30, null=False, blank=False)
     discount = models.IntegerField(null=False, blank=False)

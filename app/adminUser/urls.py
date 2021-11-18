@@ -10,4 +10,5 @@ urlpatterns = [
     path('Update_delete/', views.Update_delete.as_view(), name='update-item'),
     path('AdminEnaDisUser/', views.AdminEnaDisUser.as_view(), name='update-item'),
     path('Viewed/', views.Viewed.as_view(), name='viewed'),
+    path('GenerateCoupon/', views.GenerateCoupon.as_view(), name='generate-coupon'),
 ]
