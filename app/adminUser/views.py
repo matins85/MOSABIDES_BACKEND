@@ -22,17 +22,41 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import phonenumbers
 import random
+from datetime import datetime
+import pytz
+import dateutil.parser
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, Task, \
-    Wishlist, BillingDetails, Orders, AddPendingEmail, SpecialOrder, Coupon, Review, Transactions
+    Wishlist, BillingDetails, Orders, AddPendingEmail, Coupon, Review, Transactions
 from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage, send_email, \
     get_random_alphanumeric_string
+
 
 auth_user = get_user_model()
 
 profile_image_size = 300
 product_image_size = 600
 
+now = datetime.now()
+nowutc = datetime.utcnow()
+
+
+def try_parsing_date(text: str):
+    for fmt in ["%Y-%m-%d %H:%M:%S.%f+00:00", "%Y-%m-%d %H:%M:%S+00:00", 
+                    "%Y-%m-%d%H:%M:%S.%f+00:00", "%Y-%m-%dT%H:%M:%S.%fZ", "Y-%m-%d %H:%M:%S.%f",
+                    "%Y-%m-%d%H:%M:%S.%f"]:
+        return datetime.strptime(str(text), fmt)
+
+        
+def UpdateTask():
+    pending_task = Task.objects.filter(status="pending")
+    for row in pending_task:
+        rows = Task.objects.filter(status="pending").update(status="expired") if \
+        try_parsing_date(str(row.deadline)) < nowutc else ""
+    # delete_log = [row.update(status="expired") for row in rows if datetime.strptime(str(row.deadline), "%Y-%m-%d %H:%M:%S+00:00") < nowutc]
+    return dict()
+    # dateutil.parser.parse(str(row.deadline)) 
+    # datetime.strptime("2021-11-22T15:31:09.758170Z", '%Y-%m-%dT%H:%M:%S.%fZ')  %Y-%m-%dT%H:%M:%SZ  2021-11-24T18:27:12Z  2021-11-24 18:27:12+00:00
 
 
 # super admin add staff
@@ -213,7 +237,7 @@ class Update_delete(APIView):
                 if userD.role not in set:
                     msg = dict(error="Unauthorized Request.")
                     return Response(msg)
-                tablenames = ["reviews", "coupon", "product", "special_order", "contact_us", ]
+                tablenames = ["reviews", "coupon", "product", "contact_us", ]
                 if tablename not in tablenames:
                     msg = dict(error=f"Invalid tablenames: avaliable tablenames {tablenames}")
                     return Response(msg)
@@ -229,14 +253,6 @@ class Update_delete(APIView):
                     elif tablename == "reviews":
                         if Review.objects.filter(pk=id).exists():
                             delete_item = Review.objects.get(pk=id).delete()
-                            msg = dict(msg="Successfully Deleted!")
-                            return Response(msg)
-                        else:
-                            msg = dict(error="Does not exist!")
-                            return Response(msg)
-                    elif tablename == "special_order":
-                        if SpecialOrder.objects.filter(pk=id).exists():
-                            delete_item = SpecialOrder.objects.get(pk=id).delete()
                             msg = dict(msg="Successfully Deleted!")
                             return Response(msg)
                         else:
@@ -363,8 +379,6 @@ class Update_delete(APIView):
                 return Response(msg)
 
 
-
-
 # get data by tablename functions
 class ALL_ITEM(APIView):
     renderer_classes = [JSONRenderer]
@@ -474,28 +488,6 @@ class ALL_ITEM(APIView):
                     except auth_user.DoesNotExist:
                         msg = dict(error="Unauthorized Request.")
                         return Response(msg)
-
-                # Special order
-                elif tablename == 'special_orders':
-                    if claims == None:
-                        msg = dict(error='Authorization header not supplied.')
-                        return Response(msg)
-                    elif claims.get('error', None) != None:
-                        return Response(claims)
-                    try:
-                        userD = auth_user.objects.get(pk=claims["msg"]["id"])
-                        if userD.role not in set:
-                            msg = dict(error="Unauthorized Request.")
-                            return Response(msg)
-                        else:
-                            list_all = SpecialOrder.objects.values('image', 'description', 'name', 'email', 
-                        'quantity', 'seen', 'created_at', 'created_by')
-                            msg = dict(msg=list_all)
-                            return Response(msg)
-                    except auth_user.DoesNotExist:
-                        msg = dict(error="Unauthorized Request.")
-                        return Response(msg)
-                
                 # order
                 elif tablename == 'orders':
                     if claims == None:
@@ -521,6 +513,7 @@ class ALL_ITEM(APIView):
 
                 # Task
                 elif tablename == 'tasks':
+                    task = UpdateTask()
                     if claims == None:
                         msg = dict(error='Authorization header not supplied.')
                         return Response(msg)
@@ -672,8 +665,6 @@ class Viewed(APIView):
                         auth_user.objects.filter(pk=id).update(seen=True)
                     elif tablename == "contact_us":
                         ContactUs.objects.filter(pk=id).update(seen=True)
-                    elif tablename == "special_order":
-                        SpecialOrder.objects.filter(pk=id).update(seen=True)
                     elif tablename == "order_purchase":
                         Orders.objects.filter(order_id=id).update(seen=True)
                     elif tablename == "task":
@@ -686,80 +677,9 @@ class Viewed(APIView):
                 return Response(msg)
 
 
-# special order class
-# class AddspecialOrder(APIView):
-#     renderer_classes = [JSONRenderer]
-#     @staticmethod
-#     def post(request):
-#         claims = check_http_auth(request)
-#         set = ["superAdmin", "admin"]
-
-#         id = request.query_params.get('id', None)
-#         orders = json.loads(request.body)
-
-#         if orders == None or orders == "" or id == None or id == "":
-#             msg = dict(error='Missing order details or ID')
-#             return Response(msg)
-#         if claims == None:
-#             msg = dict(error='Authorization header not supplied.')
-#             return Response(msg)
-#         elif claims.get('error', None) != None:
-#             return Response(claims)
-#         else:
-#             try:
-#                 userD = auth_user.objects.get(pk=claims["msg"]["id"])
-#                 if userD.role not in set:
-#                     msg = dict(error="Unauthorized Request.")
-#                     return Response(msg)
-#                 else:
-#                     if auth_user.objects.filter(pk=id).exists():
-#                         res = get_random_numeric_string(10)
-#                         copy_res = f"MOB{copy.copy(res)}"
-#                         if Orders.objects.filter(order_id=copy_res).exists():
-#                             OrderPurchase().post(request)
-#                         else:
-#                             rows2 = json.loads(request.body)[0]
-#                             customer = auth_user.objects.get(pk=id)
-
-#                             for row in orders:
-#                                 upd = row.update({"order_id": copy_res})
-#                                 upd2 = row.update({"created_by": customer.id})
-#                                 upd3 = row.update({"billing_id": billing_id.id})
-#                             save_list = [Orders(product_id=Product.objects.get(pk=row["product_id"]), product_name=row["product_name"],
-#                                 billing_id=BillingDetails.objects.get(pk=row["billing_id"]), delivery_type=row["delivery_type"],
-#                                 category=row["category"], price=row["price"], order_id=row["order_id"], duration=row["duration"],
-#                                 paid=row["paid"], reference=row["reference"], total=row["total"], delivery_fee=row["delivery_fee"],
-#                                 price_desc=row["price_desc"], top_up=row["top_up"], quantity=row["quantity"],
-#                                 created_by=customer,
-#                             ) for row in orders]
-#                             save = Orders.objects.bulk_create(save_list)
-#                             find_save_data = Orders.objects.filter(order_id=copy_res)[0]
-#                             # save_trans = Transactions.objects.create(product_name=find_save_data.product_name,
-#                             #     order_id=find_save_data.order_id, total=find_save_data.total, 
-#                             #     reference=find_save_data.reference, pay_type=rows2["pay_type"].lower()).save()
-#                             upd_email = AddOrderPendingEmail.objects.create(
-#                                 email=userD.email, order_id=copy_res, reference=find_save_data.reference).save()
-#                             # add_notify = Notification.objects.create(subject="Order", item_id=copy_res, 
-#                             #     email=userD.email, body=f"{userD.name} Purchase an order with Order ID: {copy_res}", edit_by=userD, 
-#                             #     name=userD.name).save()
-#                             # userD.purchase = userD.purchase + len(orders)
-#                             # userD.save()
-#                             # pro = Orders.objects.filter(order_id=copy_res)
-#                             # for id in pro:
-#                             #     updPro = Product.objects.filter(pk=id.product_id.pk)
-#                             #     save_purchase = [updPro.update(purchase=int(sv.purchase) + 1) for sv in updPro]
-#                             # msg = Return_profile_details(userD)
-#                             return Response(msg)
-#                     else:
-#                         msg = dict(error='Invalid Customer!')
-#                         return Response(msg)
-#             except auth_user.DoesNotExist:
-#                 msg = dict(error='Invalid User please Relogin!')
-#                 return Response(msg)
 
 
-
-# special order class
+# GenerateCoupon order class
 class GenerateCoupon(APIView):
     renderer_classes = [JSONRenderer]
     @staticmethod
@@ -801,6 +721,91 @@ class GenerateCoupon(APIView):
                             return Response(msg)
                     else:
                         msg = dict(error="Cannot Gift coupon because this user has not used the previous one")
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+
+
+# create task function
+class CreateTask(APIView):
+    renderer_classes = [JSONRenderer]
+    @staticmethod
+    def post(request):
+        claims = check_http_auth(request)
+        task = UpdateTask()
+        set = ["superAdmin"]
+
+        task = json.loads(request.body).get('task', None)
+        created_for = task[0]['created_for']
+        description = task[0]['description']
+        subject = task[0]['subject']
+        deadline = task[0]['deadline']
+
+        if created_for == None or created_for == "" or description == None or description == "" or task == None or task == "" \
+            or subject == None or subject == "" or deadline == None or deadline == "" or not datetime.strptime(deadline, '%Y-%m-%dT%H:%M:%S.%fZ'):
+            msg = dict(error='Missing created_for or description or subject or deadline')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    if auth_user.objects.filter(email__in=[row["created_for"] for row in task], role="admin", is_staff=True, disabled=False).exists():
+                        save_list = [Task(description=row["description"], subject=row["subject"], deadline=row["deadline"],
+                         created_for=row["created_for"], created_by=userD) for row in task]
+                        add_task = Task.objects.bulk_create(save_list)
+                        msg = dict(msg="success")
+                        return Response(msg)
+                    else:
+                        msg = dict(error="Invalid user")
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+
+    @staticmethod
+    def put(request):
+        claims = check_http_auth(request)
+        task = UpdateTask()
+        set = ["superAdmin"]
+
+        task_id = json.loads(request.body).get('id', None)
+        description = json.loads(request.body).get('description', None)
+        subject = json.loads(request.body).get('subject', None)
+        deadline =json.loads(request.body).get('deadline', None)
+
+        if description == None or description == "" or subject == None or subject == "" \
+            or deadline == None or deadline == "" or not datetime.strptime(deadline, '%Y-%m-%dT%H:%M:%S.%fZ'):
+            msg = dict(error='Missing created_for or description or subject or deadline')
+            return Response(msg)
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    if Task.objects.filter(pk=task_id, created_by=userD.id).exists():
+                        upd_task = Task.objects.filter(pk=task_id).update(description=description, subject=subject, deadline=deadline)
+                        msg = dict(msg="success")
+                        return Response(msg)
+                    else:
+                        msg = dict(error="Invalid user")
                         return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')

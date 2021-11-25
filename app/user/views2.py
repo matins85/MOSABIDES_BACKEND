@@ -24,7 +24,7 @@ import phonenumbers
 import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, Task, \
-    Wishlist, BillingDetails, Orders, AddPendingEmail, SpecialOrder, Coupon, Review, Transactions, \
+    Wishlist, BillingDetails, Orders, AddPendingEmail, Coupon, Review, Transactions, \
     AddOrderPendingEmail, Category
 from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage, get_random_numeric_string
 
@@ -68,13 +68,16 @@ def Return_profile_details(userD):
             'delivery_status': od.delivery_status, 'top_up': od.top_up, 'quantity': od.quantity, 
             'paid_status': od.paid_status, 'created_at': od.created_at,
             'created_by': od.created_by.id} for od in orders]
-    orders2 = Orders.objects.filter(created_by=userD.id)[0]
-    order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
-                'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
-                'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
-                'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
-                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
-                'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
+    if Orders.objects.filter(created_by=userD.id).exists():
+        orders2 = Orders.objects.filter(created_by=userD.id)[0]
+        order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                    'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
+                    'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
+                    'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
+                    'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
+                    'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
+    else:
+        order_billing = []
     return dict(profile=profile, billing=billing, wishlist=wishlist, 
         order=dict(order=order, billing_user=order_billing))
 
@@ -137,51 +140,6 @@ class Contact_Us(APIView):
                 msg = dict(error='Invalid User please Relogin!')
                 return Response(msg)
 
-
-# # user request special order
-class Special_order(APIView):
-    renderer_classes = [JSONRenderer]
-    # user request special order
-    @staticmethod
-    def post(request):
-        claims = check_http_auth(request)
-        set = ["user", "admin", "superAdmin", "rider"]
-
-        image = json.loads(request.body).get('image', None)
-        quantity = json.loads(request.body).get('quantity', None)
-        description = json.loads(request.body).get('description', None)
-
-        if image == None or image == "" or quantity == None or quantity == "" \
-            or description == None or description == "":
-                msg = dict(error='Missing image or description or quantity')
-                return Response(msg)
-        if claims == None:
-            msg = dict(error='Authorization header not supplied.')
-            return Response(msg)
-        elif claims.get('error', None) != None:
-            return Response(claims)
-        else:
-            try:
-                userD = auth_user.objects.get(pk=claims["msg"]["id"])
-                if userD.role not in set:
-                    msg = dict(error="Unauthorized Request.")
-                    return Response(msg)
-                if SpecialOrder.objects.filter(email=userD.email, quantity=quantity, description=description).exists():
-                    msg = dict(error="Already exists")
-                    return Response(msg)
-                else:
-                    saveC = SpecialOrder.objects.create(name=userD.name, email=userD.email, description=description, 
-                        quantity=quantity, created_by=userD, image=ResizeImage(image, 600) if image != "" else None)
-                    saveC.save()
-                    if saveC:
-                        save = SpecialOrder.objects.get(pk=saveC.id)
-                        add_notify = Notification.objects.create(subject="Special Order", item_id=save.id, email=save.email, body=f"{save.email} Request a special order",
-                            edit_by=userD, name=save.name).save()
-                        msg = dict(msg='success')
-                        return Response(msg)
-            except auth_user.DoesNotExist:
-                msg = dict(error='Invalid User please Relogin!')
-                return Response(msg)
 
 
 

@@ -181,21 +181,6 @@ class ContactUs(models.Model):
         return self.email
 
 
-class SpecialOrder(models.Model):
-    # image = ArrayField(models.TextField(), blank=True)
-    image = JSONField()
-    description = models.TextField(null=False, blank=False)
-    name = models.CharField(max_length=255)
-    email = models.EmailField(null=False, blank=False)
-    quantity = models.IntegerField(default=0)
-    seen = models.BooleanField(default=False)
-    created_at = models.DateTimeField(default=now)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.email
-
-
 
 class Wishlist(models.Model):
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -208,6 +193,7 @@ class Wishlist(models.Model):
 
 class Task(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_for = models.EmailField(max_length=200, null=False, blank=False)
     created_at = models.DateTimeField(default=now)
     deadline = models.DateTimeField(null=False, blank=False)
     subject = models.CharField(max_length=200)

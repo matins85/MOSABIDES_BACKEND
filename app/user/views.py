@@ -546,13 +546,16 @@ def Return_profile_details(userD):
             'delivery_status': od.delivery_status, 'top_up': od.top_up, 'quantity': od.quantity, 
             'paid_status': od.paid_status, 'created_at': od.created_at,
             'created_by': od.created_by.id} for od in orders]
-    orders2 = Orders.objects.filter(created_by=userD.id)[0]
-    order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
-                'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
-                'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
-                'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
-                'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
-                'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
+    if Orders.objects.filter(created_by=userD.id).exists():
+        orders2 = Orders.objects.filter(created_by=userD.id)[0]
+        order_billing = {'email': orders2.billing_id.user.email, 'address': orders2.billing_id.address,
+                    'rider_name': orders2.assigned_to.name if orders2.assigned_to != None else None, 
+                    'rider_phone': orders2.assigned_to.phone if orders2.assigned_to != None else None,
+                    'apartment': orders2.billing_id.apartment, 'notes': orders2.billing_id.notes,
+                    'name': orders2.billing_id.user.name, 'phone': orders2.billing_id.user.phone,
+                    'total': orders2.total, 'delivery_fee': orders2.delivery_fee, 'duration': orders2.duration}
+    else:
+        order_billing = []
     return dict(profile=profile, billing=billing, wishlist=wishlist, 
         order=dict(order=order, billing_user=order_billing))
 
