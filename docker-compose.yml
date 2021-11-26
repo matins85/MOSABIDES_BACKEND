@@ -56,5 +56,23 @@ services:
       - db
       - redis
       - app
+  celery-beat:
+    restart: always
+    build:
+      context: .
+    command: celery -A app worker -B -l info
+    volumes:
+      - ./app:/app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=127.0.0.1
+      - CELERY_BROKER=redis://redis:6379
+      - CELERY_BACKEND=redis://redis:6379
+    env_file:
+      - ./.env.sample
+    depends_on:
+      - db
+      - redis
+      - app
 volumes:
   pgdata:

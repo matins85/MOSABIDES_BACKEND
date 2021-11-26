@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from celery.schedules import crontab
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -39,6 +41,7 @@ ALLOWED_HOSTS.extend(
 )
 
 
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -55,6 +58,7 @@ INSTALLED_APPS = [
     'adminUser',
     'corsheaders',
     'demo',
+    'django_celery_beat',
 ]
 
 REST_FRAMEWORK = {
@@ -173,3 +177,14 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # Redis and Celery Conf
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_BROKER")
+
+
+# import core.tasks
+
+# CELERY_ALWAYS_EAGER = True
+# CELERY_BEAT_SCHEDULE = {
+#     "admin_task": {
+#         "task": "app.tasks.change_task_status",
+#         "schedule": 10.0,
+#     },
+# }

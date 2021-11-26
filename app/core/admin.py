@@ -81,6 +81,7 @@ class TaskAdmin(admin.ModelAdmin):
 
 
 
+
 admin.site.unregister(Group)
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.Category)

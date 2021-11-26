@@ -57,6 +57,23 @@ services:
       - db
       - redis
       - app
+  celery-beat:
+    restart: always
+    build:
+      context: .
+    command: celery -A app worker -l info
+    volumes:
+      - ./app:/app
+    environment:
+      - DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CELERY_BROKER=${CELERY_BROKER}
+      - CELERY_BACKEND=${CELERY_BACKEND}
+    env_file:
+      - ./.env.sample
+    depends_on:
+      - db
+      - redis
+      - app
 volumes:
   postgres-data:
   static-data:
