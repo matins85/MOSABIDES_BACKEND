@@ -38,11 +38,10 @@ def try_parsing_date(text: str):
         return datetime.strptime(str(text), fmt)
 
 
-# @shared_task()
 @app.task
 def change_task_status():
     pending_task = Task.objects.filter(status="pending")
     for row in pending_task:
         rows = Task.objects.filter(status="pending").update(status="expired") if \
-        try_parsing_date(str(row.deadline)) < nowutc else ""
+        try_parsing_date(str(row.deadline)) < nowutc else None
     return dict()

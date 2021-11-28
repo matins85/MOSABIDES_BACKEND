@@ -144,7 +144,7 @@ class Product(models.Model):
     category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True)
     description = models.CharField(max_length=200, null=False, blank=False)
     price = models.FloatField(null=True, blank=True)
-    discount = models.IntegerField(null=True, blank=True)
+    discount = models.IntegerField(default=0)
     rating = models.IntegerField(default=3)
     rating1 = models.IntegerField(default=10)
     rating2 = models.IntegerField(default=10)

@@ -12,4 +12,5 @@ urlpatterns = [
     path('Viewed/', views.Viewed.as_view(), name='viewed'),
     path('GenerateCoupon/', views.GenerateCoupon.as_view(), name='generate-coupon'),
     path('CreateTask/', views.CreateTask.as_view(), name='create-task'),
+    path('AddProduct/', views.AddProduct.as_view(), name='add-product'),
 ]

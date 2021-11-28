@@ -80,11 +80,19 @@ class TaskAdmin(admin.ModelAdmin):
     list_display_links = ['created_by',]
 
 
+class CategoryAdmin(admin.ModelAdmin):
+    ordering = ['id']
+    list_display = ['id','name','created_at']
+    search_fields = ['id', 'name']
+    list_filter = ['name',]
+    list_per_page = 50
+    list_display_links = ['name',]
+
 
 
 admin.site.unregister(Group)
 admin.site.register(models.User, UserAdmin)
-admin.site.register(models.Category)
+admin.site.register(models.Category, CategoryAdmin)
 admin.site.register(models.ContactUs)
 admin.site.register(models.EmailMessage)
 admin.site.register(models.EmailOtp)

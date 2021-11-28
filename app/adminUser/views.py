@@ -27,7 +27,7 @@ import pytz
 import dateutil.parser
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, Task, \
-    Wishlist, BillingDetails, Orders, AddPendingEmail, Coupon, Review, Transactions
+    Wishlist, BillingDetails, Orders, AddPendingEmail, Coupon, Review, Transactions, Category
 from user.views import check_http_auth,  check_http_auth2, ValidatePhone, ResizeImage, send_email, \
     get_random_alphanumeric_string
 
@@ -806,6 +806,54 @@ class CreateTask(APIView):
                         return Response(msg)
                     else:
                         msg = dict(error="Invalid user")
+                        return Response(msg)
+            except auth_user.DoesNotExist:
+                msg = dict(error='Invalid User please Relogin!')
+                return Response(msg)
+
+
+
+# Add product
+class AddProduct(APIView):
+    renderer_classes = [JSONRenderer]
+    @staticmethod
+    def post(request):
+        claims = check_http_auth(request)
+        set = ["admin", "superAdmin"]
+
+        products = json.loads(request.body).get('products', None)
+
+        if products == None or products == "":
+            msg = dict(error='Missing products details')
+
+        if claims == None:
+            msg = dict(error='Authorization header not supplied.')
+            return Response(msg)
+        elif claims.get('error', None) != None:
+            return Response(claims)
+        else:
+            try:
+                userD = auth_user.objects.get(pk=claims["msg"]["id"])
+                if userD.role not in set:
+                    msg = dict(error="Unauthorized Request.")
+                    return Response(msg)
+                else:
+                    if Product.objects.filter(product_name__in=[product["product_name"] for product in products],
+                    category__in=[product["category"] for product in products]).exists():
+                        msg = dict(error="Product Already exists!.")
+                        return Response(msg)
+                    else:
+                        for row in products:
+                            upd2 = row.update({"created_by": userD.id})
+                        save_list = [Product(product_name=row["product_name"], category=Category.objects.get(pk=row["category"]),
+                            description=row["description"], price=row["price"], sPrice=row["sPrice"], mPrice=row["mPrice"], lPrice=row["lPrice"],  
+                            duration=row["duration"], sPrice_desc=row["sPrice_desc"], mPrice_desc=row["mPrice_desc"], lPrice_desc=row["lPrice_desc"],
+                            created_by=userD, image=ResizeImage(row["image"], product_image_size) if row["image"] != "" else None)
+                             for row in products]
+                        save = Product.objects.bulk_create(save_list)
+                        add_notify = Notification.objects.create(subject="products",item_id=[pro_id.id for pro_id in save],
+                            email=userD.email, body=f"{userD.name} Added product", edit_by=userD,name=userD.name).save()
+                        msg = dict(msg="Success")
                         return Response(msg)
             except auth_user.DoesNotExist:
                 msg = dict(error='Invalid User please Relogin!')
