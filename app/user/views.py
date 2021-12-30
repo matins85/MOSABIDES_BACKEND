@@ -19,6 +19,7 @@ from aiohttp import ClientSession
 import string
 import jwt
 import copy
+from typing import Dict
 import secrets
 import random
 from PIL import Image
@@ -79,13 +80,13 @@ def get_random_numeric_string(length):
     return result_str
 
 # hash password for api access function 
-def hash_api_access(email):
+def hash_api_access(email: str):
     result = hashlib.md5(email.encode())
     return result.hexdigest()
    
 
 # hash password function 
-def hash_password(password):
+def hash_password(password: str):
     key = os.getenv('SALT2')
     f = Fernet(key)
     token = f.encrypt(bytes(password, encoding='utf8'))
@@ -93,7 +94,7 @@ def hash_password(password):
 
 
 # decrypt password function 
-def decrypt_password(password):
+def decrypt_password(password: str):
     key = os.getenv('SALT2')
     f = Fernet(key)
     token = f.decrypt(bytes(bytes(password, encoding='utf8'))).decode()
@@ -102,7 +103,7 @@ def decrypt_password(password):
 
 
 # validate phone number
-def ValidatePhone(phone):
+def ValidatePhone(phone: str):
     if bool(phone) == True:
         my_number = phonenumbers.parse(phone, "NG")
         if phonenumbers.is_valid_number(my_number) == True:

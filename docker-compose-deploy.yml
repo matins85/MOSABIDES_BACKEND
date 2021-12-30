@@ -3,9 +3,9 @@ version: "3.9"
 services:
   app:
     build:
-      # context: .
-      context: ./proxy
-      dockerfile: Dockerfile
+      context: .
+      # context: ./proxy
+      # dockerfile: Dockerfile
     restart: always
     volumes:
       - static-data:/vol/web
@@ -16,6 +16,8 @@ services:
       - DB_PASS=${DB_PASS}
       - SECRET_KEY=${DBSECRET}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+    env_file:
+      - ./.env.sample
     depends_on:
       - db
 
@@ -61,7 +63,7 @@ services:
     restart: always
     build:
       context: .
-    command: celery -A app worker -l info
+    command: celery -A app worker -B -l info
     volumes:
       - ./app:/app
     environment:
