@@ -60,6 +60,8 @@ one_t = int(time.time()) + 900
 
 
 class UserManager(BaseUserManager):
+
+    use_in_migrations = True
     
     def create_user(self, email, password=None, **extra_fields):
         """Create and saves a new user"""
@@ -77,7 +79,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """Create user model thats support using email insttead of username"""
+    """Create user model thats support using email instead of username"""
     email = models.EmailField(max_length=200, unique=True, null=True, blank=False)
     # firstname = models.CharField(max_length=200, null=True)
     # lastname = models.CharField(max_length=200, null=True)

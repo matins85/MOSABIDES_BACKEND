@@ -34,7 +34,6 @@ from django.conf import settings
 import phonenumbers
 from cryptography.fernet import Fernet
 from passlib.hash import pbkdf2_sha256
-import random
 from django.db.models import Q
 from core.models import Product, ContactUs, EmailOtp, Notification, Test, AuthToken, \
     Wishlist, BillingDetails, Orders, AddPendingEmail
@@ -54,7 +53,7 @@ EMAIL_SENDER = os.getenv('EMAIL_HOST_USER')
 # salt for password hashing
 # salt = bytes(os.getenv('SALT'), encoding='utf8')
 # refresh token exp time
-refresh_exp = 60*24
+refresh_exp = 1
 # acces token expire time
 access_exp = 60
 
@@ -308,8 +307,6 @@ class Register(APIView):
                         return Response(msg)
 
 
-
-
 # delete user bearer token when re-request 
 def delete_auth_token(id):
     logs = AuthToken.objects.filter(created_by=id)
@@ -382,7 +379,7 @@ class Login(APIView):
                         token = jwt.encode(claims, super_secret_key, algorithm="HS256")
                         claims2 = dict(
                         role=log2.role,
-                        exp= datetime.now() + timedelta(minutes=refresh_exp),
+                        exp= datetime.now() + timedelta(days=refresh_exp),
                         email=log2.email,
                         refresh=True,
                         id=log2.pk
@@ -428,7 +425,11 @@ class Login(APIView):
                 if user_token.exists():
                     user_id = user["id"]
                     role_c = ["user", "admin", "superAdmin", "rider"]
-                    role = user["role"] if user["role"] in role_c else NotFound()
+                    if user["role"] in role_c:
+                        pass
+                    else:
+                        msg = dict(error='Invalid user')
+                        return Response(msg)
                     verify = auth_user.objects.get(pk=user_id)
                     newAccessToken = generateAccess(verify.id)
                     return Response(newAccessToken)
